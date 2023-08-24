@@ -37,11 +37,13 @@ namespace CopyTranslated
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
             [RequiredVersion("1.0")] CommandManager commandManager,
-            [RequiredVersion("1.0")] ChatGui chatGui)
+            [RequiredVersion("1.0")] ChatGui chatGui,
+            [RequiredVersion("1.0")] GameGui gameGui)
         {
             this.PluginInterface = pluginInterface;
             this.CommandManager = commandManager;
             this.ChatGui = chatGui;
+            this.GameGui = gameGui;
 
             this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             this.Configuration.Initialize(this.PluginInterface);
@@ -108,26 +110,22 @@ namespace CopyTranslated
 
         private void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
         {
-            if (args.ObjectWorld != 0)
-            {
-                return;
-            }
+            // avoid selecting players
+            if (args.ObjectWorld != 0) return;
             args.AddCustomItem(gameObjectContextMenuItem);
         }
 
         private void OpenInventoryContextMenu(InventoryContextMenuOpenArgs args)
         {
-            var itemId = args.ItemId;
-            if (itemId == 0) OutputChatLine($"Error: code 01 at {string.Format("{0:HH:mm:ss tt}", DateTime.Now)}");
-
+            if (args.ItemId == 0) OutputChatLine($"Error: code 01 at {string.Format("{0:HH:mm:ss tt}", DateTime.Now)}");
             args.AddCustomItem(inventoryContextMenuItem);
         }
 
         private async void Lookup(GameObjectContextMenuItemSelectedArgs args)
         {
             if (this.GameGui == null) OutputChatLine($"Error: code 02 at {string.Format("{0:HH:mm:ss tt}", DateTime.Now)}");
-            var itemId = (uint)(this.GameGui?.HoveredItem ?? 0);
 
+            var itemId = (uint)(this.GameGui?.HoveredItem ?? 0);
             if (itemId == 0) OutputChatLine($"Error: code 03 at {string.Format("{0:HH:mm:ss tt}", DateTime.Now)}");
 
             var language = MapLanguageToAbbreviation(Configuration.SelectedLanguage);
@@ -162,7 +160,6 @@ namespace CopyTranslated
                 var jsonContent = await apiUrl.GetStringAsync();
                 dynamic item = JsonConvert.DeserializeObject(jsonContent);
 
-                // Assuming the Name attribute is in the format "Name_en", "Name_ja", etc.
                 var itemNameAttribute = $"Name_{language}";
                 string itemName = item?[itemNameAttribute];
 
@@ -179,11 +176,7 @@ namespace CopyTranslated
                     OutputChatLine("Item name copied!");
                 }
             }
-            catch (Exception ex)
-            {
-                // Handle exception by logging the message to the clipboard
-                OutputChatLine($"Error: {ex.Message}");
-            }
+            catch (Exception ex) { OutputChatLine($"Error: {ex.Message}"); }
         }
     }
 }
