@@ -1,0 +1,13 @@
+{
+    "Author": "LKelvin",
+    "Name": "CopyTranslated",
+    "Punchline": "Copy translated item name by right-clicking.",
+    "Description": "",
+    "InternalName": "copyTranslated",
+    "ApplicableVersion": "any",
+    "Tags": [
+        "item",
+        "translate",
+        "plugin"
+    ]
+}
