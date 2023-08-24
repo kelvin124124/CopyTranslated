@@ -1,36 +1,47 @@
-# Copy Translated - FFXIV Dalamud Plugin
+# SamplePlugin
 
-"Copy Translated" is a plugin for the FFXIV Dalamud modding framework that allows users to effortlessly copy in-game item names with just a single click from the context menu.
+Simple example plugin for Dalamud.
 
-## Features 🌟
+This is not designed to be the simplest possible example, but it is also not designed to cover everything you might want to do. For more detailed questions, come ask in [the Discord](https://discord.gg/3NMcUV5).
 
-- **Multi-Language Support**: Great for users who have installed custom language packs in FFXIV. (and German/French players too, of course)
-- **Convenience**: Especially beneficial for players who need to search for item info on websites in different languages. 
-  - **Before**: Copy item name -> Google for item -> Paste translated name in the website (or marketboard)
-  - **Now**: Skip Google entirely. Direct copy from the game.
+## Main Points
 
-## Feature Showcase
+* Simple functional plugin
+  * Slash command
+  * Main UI
+  * Settings UI
+  * Image loading
+  * Plugin json
+* Simple, slightly-improved plugin configuration handling
+* Project organization
+  * Copies all necessary plugin files to the output directory
+    * Does not copy dependencies that are provided by dalamud
+    * Output directory can be zipped directly and have exactly what is required
+  * Hides data files from visual studio to reduce clutter
+    * Also allows having data files in different paths than VS would usually allow if done in the IDE directly
 
-(Work in progress.)
 
-## Installation 🔧
+The intention is less that any of this is used directly in other projects, and more to show how similar things can be done.
 
-(Work in progress.)
+## To Use
+### Building
 
-## Usage 🎮
+1. Open up `SamplePlugin.sln` in your C# editor of choice (likely [Visual Studio 2022](https://visualstudio.microsoft.com) or [JetBrains Rider](https://www.jetbrains.com/rider/)).
+2. Build the solution. By default, this will build a `Debug` build, but you can switch to `Release` in your IDE.
+3. The resulting plugin can be found at `SamplePlugin/bin/x64/Debug/SamplePlugin.dll` (or `Release` if appropriate.)
 
-1. Right-click on any in-game item.
-2. Click on "Copy Translated" from the context menu.
-3. The item name is now copied to your clipboard in your selected language.
+### Activating in-game
 
-## Settings ⚙️
+1. Launch the game and use `/xlsettings` in chat or `xlsettings` in the Dalamud Console to open up the Dalamud settings.
+    * In here, go to `Experimental`, and add the full path to the `SamplePlugin.dll` to the list of Dev Plugin Locations.
+2. Next, use `/xlplugins` (chat) or `xlplugins` (console) to open up the Plugin Installer.
+    * In here, go to `Dev Tools > Installed Dev Plugins`, and the `SamplePlugin` should be visible. Enable it.
+3. You should now be able to use `/pmycommand` (chat) or `pmycommand` (console)!
 
-Open the plugin settings to select your desired language for translation. Supported languages include English, Japanese, and more (in the future).
+Note that you only need to add it to the Dev Plugin Locations once (Step 1); it is preserved afterwards. You can disable, enable, or load your plugin on startup through the Plugin Installer.
 
-## Contributing 🤝
+### Reconfiguring for your own uses
 
-Contributions are welcome! Feel free to open an issue or submit a pull request.
+Basically, just replace all references to `SamplePlugin` in all of the files and filenames with your desired name. You'll figure it out 😁
 
-## License 📜
-
-This project is licensed under the [MIT License](LICENSE).
+Dalamud will load the JSON file (by default, `SamplePlugin/SamplePlugin.json`) next to your DLL and use it for metadata, including the description for your plugin in the Plugin Installer. Make sure to update this with information relevant to _your_ plugin!
