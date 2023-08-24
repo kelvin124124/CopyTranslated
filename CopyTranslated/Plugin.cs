@@ -8,6 +8,9 @@ using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using Flurl.Http;
 using ImGuiNET;
 using Newtonsoft.Json;
@@ -117,21 +120,65 @@ namespace CopyTranslated
 
         private void OpenInventoryContextMenu(InventoryContextMenuOpenArgs args)
         {
-            if (args.ItemId == 0) OutputChatLine($"Error: code 01 at {string.Format("{0:HH:mm:ss tt}", DateTime.Now)}");
+            if (args.ItemId == 0) OutputChatLine("Error: inventory ItemID = 0");
             args.AddCustomItem(inventoryContextMenuItem);
         }
 
-        private async void Lookup(GameObjectContextMenuItemSelectedArgs args)
+        private unsafe void Lookup(GameObjectContextMenuItemSelectedArgs args)
         {
-            if (this.GameGui == null) OutputChatLine($"Error: code 02 at {string.Format("{0:HH:mm:ss tt}", DateTime.Now)}");
+            uint itemId = 0;
 
-            var itemId = (uint)(this.GameGui?.HoveredItem ?? 0);
-            if (itemId == 0) OutputChatLine($"Error: code 03 at {string.Format("{0:HH:mm:ss tt}", DateTime.Now)}");
+            switch (args.ParentAddonName)
+            {
+                case "RecipeNote":
+                    nint recipeNoteAgent = this.GameGui.FindAgentInterface(args.ParentAddonName);
+                    unsafe { itemId = *(uint*)(recipeNoteAgent + 0x398); }
+                    break;
 
+                case "RecipeTree":
+                case "RecipeMaterialList":
+                    unsafe
+                    {
+                        
+                        UIModule* uiModule = (UIModule*)this.GameGui.GetUIModule();
+                        AgentModule* agents = uiModule->GetAgentModule();
+                        AgentInterface* agent = agents->GetAgentByInternalId(AgentId.RecipeItemContext);
+
+                        itemId = *(uint*)((nint)agent + 0x28);
+                    }
+                    break;
+
+                case "ChatLog":
+                    nint ChatLog = this.GameGui.FindAgentInterface(args.ParentAddonName);
+                    unsafe { itemId = *(uint*)(ChatLog + 0x948); }
+                    break;
+
+                case "ContentsInfoDetail":
+                    unsafe
+                    {
+                        
+                        UIModule* uiModule = (UIModule*)this.GameGui.GetUIModule();
+                        AgentModule* agents = uiModule->GetAgentModule();
+                        AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
+                        
+                        itemId = *(uint*)((nint)agent + 0x17CC);
+                    }
+                    break;
+
+                case "DailyQuestSupply":
+                    nint DailyQuestSupply = this.GameGui.FindAgentInterface(args.ParentAddonName);
+                    unsafe { itemId = *(uint*)(DailyQuestSupply + 0x54); }
+                    break;
+
+                default:
+                    itemId = (uint)this.GameGui.HoveredItem;
+                    if (itemId == 0) OutputChatLine($"Error: {itemId},{args.ParentAddonName}\nReport to developer.");
+                    break;
+            }
             var language = MapLanguageToAbbreviation(Configuration.SelectedLanguage);
-
-            await GetItemInfoAndCopyToClipboard(itemId, language);
+            Task.Run(() => GetItemInfoAndCopyToClipboard(itemId, language));
         }
+
 
         private async void InventoryLookup(InventoryContextMenuItemSelectedArgs args)
         {
@@ -156,6 +203,8 @@ namespace CopyTranslated
         {
             try
             {
+                if (itemId == 0) return;
+
                 var apiUrl = $"https://xivapi.com/Item/{itemId}?columns=Name_{language}";
                 var jsonContent = await apiUrl.GetStringAsync();
                 dynamic item = JsonConvert.DeserializeObject(jsonContent);
@@ -165,7 +214,7 @@ namespace CopyTranslated
 
                 if (string.IsNullOrEmpty(itemName))
                 {
-                    OutputChatLine($"Error: code 04 at " +
+                    OutputChatLine($"Error: API error at " +
                         $"{string.Format("{0:HH:mm:ss tt}", DateTime.Now)} " +
                         $"https://xivapi.com/Item/{itemId}?columns=Name_{language} returned " +
                         $"{jsonContent}");
@@ -173,7 +222,7 @@ namespace CopyTranslated
                 else
                 {
                     ImGui.SetClipboardText(itemName);
-                    OutputChatLine("Item name copied!");
+                    OutputChatLine($"Item copied: {itemName}");
                 }
             }
             catch (Exception ex) { OutputChatLine($"Error: {ex.Message}"); }
