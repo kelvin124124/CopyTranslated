@@ -23,19 +23,16 @@ namespace CopyTranslated
     {
         public string Name => "Item Translator Plugin";
 
-        private DalamudPluginInterface PluginInterface { get; init; }
-        private CommandManager CommandManager { get; init; }
-        public Configuration Configuration { get; init; }
-        public WindowSystem WindowSystem = new("ItemTranslatorPlugin");
-
-        private ConfigWindow ConfigWindow { get; init; }
-
-        public GameGui GameGui { get; init; } = null!;
-        public ChatGui ChatGui { get; init; }
-
-        private DalamudContextMenu contextMenu;
-        private GameObjectContextMenuItem gameObjectContextMenuItem;
-        private InventoryContextMenuItem inventoryContextMenuItem;
+        private readonly DalamudPluginInterface pluginInterface;
+        private readonly CommandManager commandManager;
+        private readonly ChatGui chatGui;
+        private readonly GameGui gameGui;
+        private readonly DalamudContextMenu contextMenu;
+        private readonly GameObjectContextMenuItem gameObjectContextMenuItem;
+        private readonly InventoryContextMenuItem inventoryContextMenuItem;
+        public Configuration Configuration { get; }
+        public WindowSystem WindowSystem { get; } = new("ItemTranslatorPlugin");
+        private readonly ConfigWindow configWindow;
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -43,37 +40,29 @@ namespace CopyTranslated
             [RequiredVersion("1.0")] ChatGui chatGui,
             [RequiredVersion("1.0")] GameGui gameGui)
         {
-            this.PluginInterface = pluginInterface;
-            this.CommandManager = commandManager;
-            this.ChatGui = chatGui;
-            this.GameGui = gameGui;
+            this.pluginInterface = pluginInterface;
+            this.commandManager = commandManager;
+            this.chatGui = chatGui;
+            this.gameGui = gameGui;
 
-            this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-            this.Configuration.Initialize(this.PluginInterface);
+            Configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+            Configuration.Initialize(pluginInterface);
 
-            ConfigWindow = new ConfigWindow(this);
+            configWindow = new ConfigWindow(this);
+            WindowSystem.AddWindow(configWindow);
 
-            WindowSystem.AddWindow(ConfigWindow);
+            pluginInterface.UiBuilder.Draw += DrawUI;
+            pluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            this.PluginInterface.UiBuilder.Draw += DrawUI;
-            this.PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
-
-            // create instance
             contextMenu = new DalamudContextMenu();
 
-            // create context menu item for GameObject
             gameObjectContextMenuItem = new GameObjectContextMenuItem(
-                new SeString(new TextPayload("Copy Translated")), // text
-                Lookup, // action to invoke
-                true); // use dalamud indicator
+                new SeString(new TextPayload("Copy Translated")), Lookup, true);
 
             contextMenu.OnOpenGameObjectContextMenu += OpenGameObjectContextMenu;
 
-            // create context menu item for Inventory
             inventoryContextMenuItem = new InventoryContextMenuItem(
-                new SeString(new TextPayload("Copy Translated")), // text
-                InventoryLookup, // new action for inventory lookup
-                true); // use dalamud indicator
+                new SeString(new TextPayload("Copy Translated")), InventoryLookup, true);
 
             contextMenu.OnOpenInventoryContextMenu += OpenInventoryContextMenu;
         }
@@ -84,38 +73,29 @@ namespace CopyTranslated
             contextMenu.OnOpenInventoryContextMenu -= OpenInventoryContextMenu;
             contextMenu.Dispose();
 
-            this.WindowSystem.RemoveAllWindows();
-            ConfigWindow.Dispose();
+            WindowSystem.RemoveAllWindows();
+            configWindow.Dispose();
         }
 
-        private void DrawUI()
-        {
-            this.WindowSystem.Draw();
-        }
+        private void DrawUI() => WindowSystem.Draw();
 
-        public void DrawConfigUI()
-        {
-            ConfigWindow.IsOpen = true;
-        }
+        public void DrawConfigUI() => configWindow.IsOpen = true;
 
         internal void OutputChatLine(SeString message)
         {
             SeStringBuilder sb = new();
-            _ = sb.AddUiForeground(45);
-            _ = sb.AddText("[Item Translated] ");
-            _ = sb.AddUiForegroundOff();
-            _ = sb.Append(message);
-            this.ChatGui.PrintChat(new XivChatEntry
-            {
-                Message = sb.BuiltString
-            });
+            sb.AddUiForeground(45)
+              .AddText("[Item Translated] ")
+              .AddUiForegroundOff()
+              .Append(message);
+
+            chatGui.PrintChat(new XivChatEntry { Message = sb.BuiltString });
         }
 
         private void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
         {
-            // avoid selecting players
-            if (args.ObjectWorld != 0) return;
-            args.AddCustomItem(gameObjectContextMenuItem);
+            if (args.ObjectWorld == 0)
+                args.AddCustomItem(gameObjectContextMenuItem);
         }
 
         private void OpenInventoryContextMenu(InventoryContextMenuOpenArgs args)
@@ -126,78 +106,56 @@ namespace CopyTranslated
 
         private unsafe void Lookup(GameObjectContextMenuItemSelectedArgs args)
         {
-            uint itemId = 0;
+            uint itemId;
 
             switch (args.ParentAddonName)
             {
                 case "RecipeNote":
-                    nint recipeNoteAgent = this.GameGui.FindAgentInterface(args.ParentAddonName);
-                    unsafe { itemId = *(uint*)(recipeNoteAgent + 0x398); }
+                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x398);
                     break;
-
                 case "RecipeTree":
                 case "RecipeMaterialList":
-                    unsafe
                     {
-                        
-                        UIModule* uiModule = (UIModule*)this.GameGui.GetUIModule();
+                        UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
                         AgentModule* agents = uiModule->GetAgentModule();
                         AgentInterface* agent = agents->GetAgentByInternalId(AgentId.RecipeItemContext);
-
                         itemId = *(uint*)((nint)agent + 0x28);
+                        break;
                     }
-                    break;
-
                 case "ChatLog":
-                    nint ChatLog = this.GameGui.FindAgentInterface(args.ParentAddonName);
-                    unsafe { itemId = *(uint*)(ChatLog + 0x948); }
+                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x948);
                     break;
-
                 case "ContentsInfoDetail":
-                    unsafe
                     {
-                        
-                        UIModule* uiModule = (UIModule*)this.GameGui.GetUIModule();
+                        UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
                         AgentModule* agents = uiModule->GetAgentModule();
                         AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
-                        
                         itemId = *(uint*)((nint)agent + 0x17CC);
+                        break;
                     }
-                    break;
-
                 case "DailyQuestSupply":
-                    nint DailyQuestSupply = this.GameGui.FindAgentInterface(args.ParentAddonName);
-                    unsafe { itemId = *(uint*)(DailyQuestSupply + 0x54); }
+                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x54);
                     break;
-
                 default:
-                    itemId = (uint)this.GameGui.HoveredItem;
+                    itemId = (uint)gameGui.HoveredItem;
                     if (itemId == 0) OutputChatLine($"Error: {itemId},{args.ParentAddonName}\nReport to developer.");
                     break;
             }
-            var language = MapLanguageToAbbreviation(Configuration.SelectedLanguage);
-            Task.Run(() => GetItemInfoAndCopyToClipboard(itemId, language));
-        }
 
+            Task.Run(() => GetItemInfoAndCopyToClipboard(itemId, MapLanguageToAbbreviation(Configuration.SelectedLanguage)));
+        }
 
         private async void InventoryLookup(InventoryContextMenuItemSelectedArgs args)
         {
-            var itemId = args.ItemId;
-            var language = MapLanguageToAbbreviation(Configuration.SelectedLanguage);
-
-            await GetItemInfoAndCopyToClipboard(itemId, language);
+            await GetItemInfoAndCopyToClipboard(args.ItemId, MapLanguageToAbbreviation(Configuration.SelectedLanguage));
         }
 
-        private string MapLanguageToAbbreviation(string fullLanguageName)
+        private static string MapLanguageToAbbreviation(string fullLanguageName) => fullLanguageName switch
         {
-            return fullLanguageName switch
-            {
-                "English" => "en",
-                "Japanese" => "ja",
-                // Add other mappings as needed
-                _ => "en" // default to English if not found
-            };
-        }
+            "English" => "en",
+            "Japanese" => "ja",
+            _ => "en"
+        };
 
         private async Task GetItemInfoAndCopyToClipboard(uint itemId, string language)
         {
@@ -207,17 +165,13 @@ namespace CopyTranslated
 
                 var apiUrl = $"https://xivapi.com/Item/{itemId}?columns=Name_{language}";
                 var jsonContent = await apiUrl.GetStringAsync();
-                dynamic item = JsonConvert.DeserializeObject(jsonContent);
+                dynamic? item = JsonConvert.DeserializeObject(jsonContent);
 
-                var itemNameAttribute = $"Name_{language}";
-                string itemName = item?[itemNameAttribute];
+                string? itemName = item?[$"Name_{language}"];
 
                 if (string.IsNullOrEmpty(itemName))
                 {
-                    OutputChatLine($"Error: API error at " +
-                        $"{string.Format("{0:HH:mm:ss tt}", DateTime.Now)} " +
-                        $"https://xivapi.com/Item/{itemId}?columns=Name_{language} returned " +
-                        $"{jsonContent}");
+                    OutputChatLine($"Error: API error at {DateTime.Now:HH:mm:ss tt} {apiUrl} returned {jsonContent}");
                 }
                 else
                 {
