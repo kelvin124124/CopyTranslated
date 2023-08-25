@@ -2,6 +2,12 @@
   "version": 1,
   "dependencies": {
     "net7.0-windows7.0": {
+      "CHTCHSConv": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "A6G2FO6AZ6MHNY3YbA98YF2Cty1O74+hffIJN6vKONUhyeXtd+kpZumYLFW0Q8tT3SToXNQoLuMFqScQF+FY8g=="
+      },
       "Dalamud.ContextMenu": {
         "type": "Direct",
         "requested": "[1.2.3, )",

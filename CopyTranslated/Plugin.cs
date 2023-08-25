@@ -17,7 +17,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
-using Microsoft.VisualBasic;
+using Microsoft.International.Converters.TraditionalChineseToSimplifiedConverter;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -308,10 +308,10 @@ namespace CopyTranslated
                 if (filter == "Name_chs")
                 {
                     itemName = Regex.Unescape(itemName);
-                    if (isTraditionalChinese)
+                    if (isTraditionalChinese) 
                     {
-                        itemName = Strings.StrConv(itemName, VbStrConv.TraditionalChinese, 1028) ?? "";
-                    }
+                        itemName = ChineseConverter.Convert(itemName, ChineseConversionDirection.SimplifiedToTraditional);
+                    } ; 
                 }
                 if (string.IsNullOrEmpty(itemName))
                 {
