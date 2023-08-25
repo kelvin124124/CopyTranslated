@@ -28,7 +28,7 @@ namespace CopyTranslated
 {
     public sealed class Plugin : IDalamudPlugin
     {
-        public string Name => "Item Translator Plugin";
+        public string Name => "CopyTranslated";
 
         private readonly DalamudPluginInterface pluginInterface;
         private readonly CommandManager commandManager;

@@ -3,7 +3,7 @@
     "Name": "CopyTranslated",
     "Punchline": "Copy translated item name by right-clicking.",
     "Description": "",
-    "InternalName": "copyTranslated",
+    "InternalName": "CopyTranslated",
     "ApplicableVersion": "any",
     "Tags": [
         "item",
