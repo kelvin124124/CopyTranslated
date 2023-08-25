@@ -21,8 +21,14 @@
 
 ## Settings ⚙️
 
-Open the plugin settings to select your desired language for translation. Supported languages include 
+Open the plugin configuration window to select your desired language for translation. Supported languages include 
 English, Japanese, German, French and more (in the future).
+
+## To-do(s) 🎯
+
+Add supprt to more UI elements
+Add Chinese support
+Command & window for in-game item translator (maybe)
 
 ## Contributing 🤝
 
