@@ -18,11 +18,11 @@ https://github.com/kelvin124124/CopyTranslated/assets/19372340/9e25a58b-17ab-49d
 
 ## Settings ⚙️
 Open the plugin configuration window to select your desired language for translation. Supported languages include 
-English, Japanese, German, French and more (in the future).
+English, Japanese, German, French, Chinese (Simplified) and more (in the future).
 
 ## To-do(s) 🎯
 Add supprt to more UI elements  
-Add Chinese support  
+Add Chinese (Traditional) support  
 Command & window for in-game item translator (maybe)  
 
 ## Contributing 🤝
