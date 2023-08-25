@@ -26,9 +26,9 @@ English, Japanese, German, French and more (in the future).
 
 ## To-do(s) 🎯
 
-Add supprt to more UI elements
-Add Chinese support
-Command & window for in-game item translator (maybe)
+Add supprt to more UI elements  
+Add Chinese support  
+Command & window for in-game item translator (maybe)  
 
 ## Contributing 🤝
 
