@@ -14,13 +14,13 @@ using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using Flurl.Http;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace CopyTranslated
@@ -31,10 +31,12 @@ namespace CopyTranslated
 
         private readonly DalamudPluginInterface pluginInterface;
         private readonly CommandManager commandManager;
+
         private readonly ChatGui chatGui;
-        private readonly ClientState clientState;
         private readonly GameGui gameGui;
+        private readonly ClientState clientState;
         private readonly DataManager dataManager;
+
         private readonly DalamudContextMenu contextMenu;
         private readonly GameObjectContextMenuItem gameObjectContextMenuItem;
         private readonly InventoryContextMenuItem inventoryContextMenuItem;
@@ -43,25 +45,24 @@ namespace CopyTranslated
         public WindowSystem WindowSystem { get; } = new("ItemTranslatorPlugin");
         private readonly ConfigWindow configWindow;
 
-        private bool? isLanguagePackUsedCache;
+        private bool? isSheetAvailableCache;
         private ExcelSheet<Item>? itemSheetCache;
-
-        private readonly Dictionary<string, string> languageAbbreviationCache = new();
+        private readonly Dictionary<string, string> languageFilterCache = new();
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
             [RequiredVersion("1.0")] CommandManager commandManager,
             [RequiredVersion("1.0")] ChatGui chatGui,
             [RequiredVersion("1.0")] GameGui gameGui,
-            [RequiredVersion("1.0")] DataManager dataManager,
-            [RequiredVersion("1.0")] ClientState clientState)
+            [RequiredVersion("1.0")] ClientState clientState,
+            [RequiredVersion("1.0")] DataManager dataManager)
         {
             this.pluginInterface = pluginInterface;
             this.commandManager = commandManager;
             this.chatGui = chatGui;
             this.gameGui = gameGui;
-            this.dataManager = dataManager;
             this.clientState = clientState;
+            this.dataManager = dataManager;
 
             Configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             Configuration.Initialize(pluginInterface);
@@ -73,15 +74,12 @@ namespace CopyTranslated
             pluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
             contextMenu = new DalamudContextMenu();
-
             gameObjectContextMenuItem = new GameObjectContextMenuItem(
                 new SeString(new TextPayload("Copy Translated")), Lookup, true);
-
             contextMenu.OnOpenGameObjectContextMenu += OpenGameObjectContextMenu;
 
             inventoryContextMenuItem = new InventoryContextMenuItem(
                 new SeString(new TextPayload("Copy Translated")), InventoryLookup, true);
-
             contextMenu.OnOpenInventoryContextMenu += OpenInventoryContextMenu;
 
             Initialize();
@@ -98,6 +96,12 @@ namespace CopyTranslated
 
             WindowSystem.RemoveAllWindows();
             configWindow.Dispose();
+
+            isSheetAvailableCache = null;
+            itemSheetCache = null;
+            languageFilterCache.Clear();
+
+            if (LazyHttpClient.IsValueCreated) LazyHttpClient.Value.Dispose();
         }
 
         private void DrawUI() => WindowSystem.Draw();
@@ -115,9 +119,9 @@ namespace CopyTranslated
                 OutputChatLine($"Error: Failed to fetch Excel sheet for language {Configuration.SelectedLanguage}. " +
                     $"Details: {ex.Message}");
             }
-            isLanguagePackUsedCache = IsLanguagePackUsed(itemSheetCache);
+            isSheetAvailableCache = IsSheetAvailable(itemSheetCache);
 
-            languageAbbreviationCache.Clear();
+            languageFilterCache.Clear();
         }
 
         internal void OutputChatLine(SeString message)
@@ -176,7 +180,6 @@ namespace CopyTranslated
                     if (itemId == 0) OutputChatLine($"Error: {itemId},{args.ParentAddonName}\nReport to developer.");
                     break;
             }
-
             GetItemInfoAndCopyToClipboard(itemId, Configuration.SelectedLanguage);
         }
 
@@ -185,9 +188,9 @@ namespace CopyTranslated
             GetItemInfoAndCopyToClipboard(args.ItemId, Configuration.SelectedLanguage);
         }
 
-        private bool IsLanguagePackUsed(ExcelSheet<Item>? sheet)
+        private bool IsSheetAvailable(ExcelSheet<Item>? sheet)
         {
-            if (clientState.ClientLanguage != MapLanguageToClientLanguage(Configuration.SelectedLanguage)) return false;
+            if (clientState.ClientLanguage != MapLanguageToClientLanguage(Configuration.SelectedLanguage)) return true;
 
             string testItemName;
 
@@ -212,14 +215,14 @@ namespace CopyTranslated
 
             var retrievedItemName = sheet?.GetRow(5059)?.Name ?? "";
 
-            if (string.IsNullOrEmpty(retrievedItemName)) return true;
-            return retrievedItemName != testItemName;
+            if (string.IsNullOrEmpty(retrievedItemName)) return false;
+            return retrievedItemName == testItemName;
         }
 
         public void GetItemInfoAndCopyToClipboard(uint itemId, string language)
         {
             if (itemId == 0) return;
-            if (isLanguagePackUsedCache == true)
+            if (isSheetAvailableCache == false)
             {
                 Task.Run(() => GetItemNameByApi(itemId, language));
                 return;
@@ -250,47 +253,45 @@ namespace CopyTranslated
             _ => ClientLanguage.English
         };
 
-        private string MapLanguageToAbbreviation(string fullLanguageName)
+        private string MapLanguageToFilter(string fullLanguageName)
         {
-            if (languageAbbreviationCache.TryGetValue(fullLanguageName, out var abbreviation))
+            if (languageFilterCache.TryGetValue(fullLanguageName, out var Filter))
             {
-                return abbreviation;
+                return Filter;
             }
 
-            abbreviation = fullLanguageName switch
+            Filter = fullLanguageName switch
             {
-                "English" => "en",
-                "Japanese" => "ja",
-                "German" => "de",
-                "French" => "fr",
-                _ => "en"
+                "English" => "Name_en",
+                "Japanese" => "Name_ja",
+                "German" => "Name_de",
+                "French" => "Name_fr",
+                "Chinese (Simplified)" => "Name_chs",
+                _ => "Name_en"
             };
 
-            languageAbbreviationCache[fullLanguageName] = abbreviation;
-            return abbreviation;
+            languageFilterCache[fullLanguageName] = Filter;
+            return Filter;
         }
+
+        private static Lazy<HttpClient> LazyHttpClient = new Lazy<HttpClient>(() => new HttpClient());
 
         private async Task GetItemNameByApi(uint itemId, string language)
         {
             if (itemId == 0) return;
 
-            var abbreviation = MapLanguageToAbbreviation(language);
-            const string BaseApiUrl = "https://xivapi.com/Item/";
+            var filter = MapLanguageToFilter(language);
+            string apiUrl = filter == "Name_chs" ?
+                $"https://cafemaker.wakingsands.com/Item/{itemId}?columns={filter}" :
+                $"https://xivapi.com/Item/{itemId}?columns={filter}";
 
             try
             {
-                var apiUrl = $"{BaseApiUrl}{itemId}?columns=Name_{abbreviation}";
-                var jsonContent = await apiUrl.GetStringAsync();
-                dynamic? item = JsonConvert.DeserializeObject(jsonContent);
+                var jsonContent = await LazyHttpClient.Value.GetStringAsync(apiUrl);
 
-                if (item == null)
-                {
-                    OutputChatLine($"Error: API returned null for URL {apiUrl}");
-                    return;
-                }
+                var match = Regex.Match(jsonContent, @":\""(.*?)\""}");
 
-                string itemName = item[$"Name_{abbreviation}"];
-
+                string itemName = match.Groups[1].Value;
                 if (string.IsNullOrEmpty(itemName))
                 {
                     OutputChatLine($"Error: API error at {DateTime.Now:HH:mm:ss tt} {apiUrl} returned {jsonContent}");
