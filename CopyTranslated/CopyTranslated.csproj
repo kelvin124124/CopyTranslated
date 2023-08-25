@@ -32,8 +32,6 @@
   <ItemGroup>
     <PackageReference Include="Dalamud.ContextMenu" Version="1.2.3" />
     <PackageReference Include="DalamudPackager" Version="2.1.11" />
-    <PackageReference Include="Flurl.Http" Version="3.2.4" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <Reference Include="FFXIVClientStructs">
       <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
       <Private>false</Private>

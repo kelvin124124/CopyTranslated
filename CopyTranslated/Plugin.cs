@@ -17,6 +17,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
+using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -46,6 +47,7 @@ namespace CopyTranslated
         private readonly ConfigWindow configWindow;
 
         private bool? isSheetAvailableCache;
+        private bool isTraditionalChinese = false;
         private ExcelSheet<Item>? itemSheetCache;
         private readonly Dictionary<string, string> languageFilterCache = new();
 
@@ -110,6 +112,8 @@ namespace CopyTranslated
 
         private void Initialize()
         {
+            isTraditionalChinese = false;
+
             try
             {
                 itemSheetCache = dataManager.GetExcelSheet<Item>(MapLanguageToClientLanguage(Configuration.SelectedLanguage));
@@ -260,6 +264,14 @@ namespace CopyTranslated
                 return Filter;
             }
 
+            if (fullLanguageName == "Chinese (Traditional)")
+            {
+                Filter = "Name_chs";
+                isTraditionalChinese = true;
+                languageFilterCache[fullLanguageName] = Filter;
+                return Filter;
+            }
+
             Filter = fullLanguageName switch
             {
                 "English" => "Name_en",
@@ -293,7 +305,14 @@ namespace CopyTranslated
 
                 string itemName = match.Groups[1].Value;
 
-                if (filter == "Name_chs") itemName = Regex.Unescape(itemName);
+                if (filter == "Name_chs")
+                {
+                    itemName = Regex.Unescape(itemName);
+                    if (isTraditionalChinese)
+                    {
+                        itemName = Strings.StrConv(itemName, VbStrConv.TraditionalChinese, 1028) ?? "";
+                    }
+                }
                 if (string.IsNullOrEmpty(itemName))
                 {
                     OutputChatLine($"Error: API error at {DateTime.Now:HH:mm:ss tt} {apiUrl} returned {jsonContent}");
