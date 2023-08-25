@@ -1,5 +1,8 @@
 using CopyTranslated.Windows;
+using Dalamud;
 using Dalamud.ContextMenu;
+using Dalamud.Data;
+using Dalamud.Game.ClientState;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.Game.Text;
@@ -13,8 +16,11 @@ using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Flurl.Http;
 using ImGuiNET;
+using Lumina.Excel;
+using Lumina.Excel.GeneratedSheets;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace CopyTranslated
@@ -26,24 +32,36 @@ namespace CopyTranslated
         private readonly DalamudPluginInterface pluginInterface;
         private readonly CommandManager commandManager;
         private readonly ChatGui chatGui;
+        private readonly ClientState clientState;
         private readonly GameGui gameGui;
+        private readonly DataManager dataManager;
         private readonly DalamudContextMenu contextMenu;
         private readonly GameObjectContextMenuItem gameObjectContextMenuItem;
         private readonly InventoryContextMenuItem inventoryContextMenuItem;
+
         public Configuration Configuration { get; }
         public WindowSystem WindowSystem { get; } = new("ItemTranslatorPlugin");
         private readonly ConfigWindow configWindow;
+
+        private bool? isLanguagePackUsedCache;
+        private ExcelSheet<Item>? itemSheetCache;
+
+        private readonly Dictionary<string, string> languageAbbreviationCache = new();
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
             [RequiredVersion("1.0")] CommandManager commandManager,
             [RequiredVersion("1.0")] ChatGui chatGui,
-            [RequiredVersion("1.0")] GameGui gameGui)
+            [RequiredVersion("1.0")] GameGui gameGui,
+            [RequiredVersion("1.0")] DataManager dataManager,
+            [RequiredVersion("1.0")] ClientState clientState)
         {
             this.pluginInterface = pluginInterface;
             this.commandManager = commandManager;
             this.chatGui = chatGui;
             this.gameGui = gameGui;
+            this.dataManager = dataManager;
+            this.clientState = clientState;
 
             Configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             Configuration.Initialize(pluginInterface);
@@ -65,10 +83,15 @@ namespace CopyTranslated
                 new SeString(new TextPayload("Copy Translated")), InventoryLookup, true);
 
             contextMenu.OnOpenInventoryContextMenu += OpenInventoryContextMenu;
+
+            Initialize();
+            configWindow.OnLanguageChanged += Initialize;
         }
 
         public void Dispose()
         {
+            configWindow.OnLanguageChanged -= Initialize;
+
             contextMenu.OnOpenGameObjectContextMenu -= OpenGameObjectContextMenu;
             contextMenu.OnOpenInventoryContextMenu -= OpenInventoryContextMenu;
             contextMenu.Dispose();
@@ -80,6 +103,20 @@ namespace CopyTranslated
         private void DrawUI() => WindowSystem.Draw();
 
         public void DrawConfigUI() => configWindow.IsOpen = true;
+
+        private void Initialize()
+        {
+            isLanguagePackUsedCache = IsLanguagePackUsed();
+            try
+            {
+                itemSheetCache = dataManager.GetExcelSheet<Item>(MapLanguageToClientLanguage(Configuration.SelectedLanguage));
+            }
+            catch (Exception ex)
+            {
+                OutputChatLine($"Error: Failed to fetch Excel sheet for language {Configuration.SelectedLanguage}. " +
+                    $"Details: {ex.Message}");
+            }
+        }
 
         internal void OutputChatLine(SeString message)
         {
@@ -138,34 +175,120 @@ namespace CopyTranslated
                     break;
             }
 
-            Task.Run(() => GetItemInfoAndCopyToClipboard(itemId, MapLanguageToAbbreviation(Configuration.SelectedLanguage)));
+            GetItemInfoAndCopyToClipboard(itemId, Configuration.SelectedLanguage);
         }
 
-        private async void InventoryLookup(InventoryContextMenuItemSelectedArgs args)
+        private void InventoryLookup(InventoryContextMenuItemSelectedArgs args)
         {
-            await GetItemInfoAndCopyToClipboard(args.ItemId, MapLanguageToAbbreviation(Configuration.SelectedLanguage));
+            GetItemInfoAndCopyToClipboard(args.ItemId, Configuration.SelectedLanguage);
         }
 
-        private static string MapLanguageToAbbreviation(string fullLanguageName) => fullLanguageName switch
+        private bool IsLanguagePackUsed()
         {
-            "English" => "en",
-            "Japanese" => "ja",
-            "German" => "de",
-            "French" => "fr",
-            _ => "en"
+            if (clientState.ClientLanguage != MapLanguageToClientLanguage(Configuration.SelectedLanguage)) return false;
+
+            string testItemName;
+
+            switch (clientState.ClientLanguage)
+            {
+                case ClientLanguage.English:
+                    testItemName = "Cobalt Ingot";
+                    break;
+                case ClientLanguage.Japanese:
+                    testItemName = "コバルトインゴット";
+                    break;
+                case ClientLanguage.German:
+                    testItemName = "Koboldeisenbarren";
+                    break;
+                case ClientLanguage.French:
+                    testItemName = "Lingot de cobalt";
+                    break;
+                default:
+                    testItemName = "Cobalt Ingot";
+                    break;
+            }
+
+            var sheet = dataManager.GetExcelSheet<Item>();
+            var retrievedItemName = sheet?.GetRow(5059)?.Name ?? "";
+
+            if (string.IsNullOrEmpty(retrievedItemName)) return true;
+            return retrievedItemName != testItemName;
+        }
+
+        public void GetItemInfoAndCopyToClipboard(uint itemId, string language)
+        {
+            if (itemId == 0) return;
+            if (isLanguagePackUsedCache == true)
+            {
+                Task.Run(() => GetItemNameByApi(itemId, language));
+                return;
+            }
+
+            Item? item = null;
+            item = itemSheetCache?.GetRow(itemId);
+
+            var itemName = item?.Name ?? string.Empty;
+            if (string.IsNullOrEmpty(itemName))
+            {
+                OutputChatLine($"Error: Item not found in {language} database for ID {itemId}");
+                return;
+            }
+            else
+            {
+                ImGui.SetClipboardText(itemName);
+                OutputChatLine($"Item copied: {itemName}");
+            }
+        }
+
+        private static ClientLanguage MapLanguageToClientLanguage(string fullLanguageName) => fullLanguageName switch
+        {
+            "English" => ClientLanguage.English,
+            "Japanese" => ClientLanguage.Japanese,
+            "German" => ClientLanguage.German,
+            "French" => ClientLanguage.French,
+            _ => ClientLanguage.English
         };
 
-        private async Task GetItemInfoAndCopyToClipboard(uint itemId, string language)
+        private string MapLanguageToAbbreviation(string fullLanguageName)
         {
+            if (languageAbbreviationCache.TryGetValue(fullLanguageName, out var abbreviation))
+            {
+                return abbreviation;
+            }
+
+            abbreviation = fullLanguageName switch
+            {
+                "English" => "en",
+                "Japanese" => "ja",
+                "German" => "de",
+                "French" => "fr",
+                _ => "en"
+            };
+
+            languageAbbreviationCache[fullLanguageName] = abbreviation;
+            return abbreviation;
+        }
+
+        private async Task GetItemNameByApi(uint itemId, string language)
+        {
+            if (itemId == 0) return;
+
+            var abbreviation = MapLanguageToAbbreviation(language);
+            const string BaseApiUrl = "https://xivapi.com/Item/";
+
             try
             {
-                if (itemId == 0) return;
-
-                var apiUrl = $"https://xivapi.com/Item/{itemId}?columns=Name_{language}";
+                var apiUrl = $"{BaseApiUrl}{itemId}?columns=Name_{abbreviation}";
                 var jsonContent = await apiUrl.GetStringAsync();
                 dynamic? item = JsonConvert.DeserializeObject(jsonContent);
 
-                string? itemName = item?[$"Name_{language}"];
+                if (item == null)
+                {
+                    OutputChatLine($"Error: API returned null for URL {apiUrl}");
+                    return;
+                }
+
+                string itemName = item[$"Name_{abbreviation}"];
 
                 if (string.IsNullOrEmpty(itemName))
                 {
@@ -177,7 +300,10 @@ namespace CopyTranslated
                     OutputChatLine($"Item copied: {itemName}");
                 }
             }
-            catch (Exception ex) { OutputChatLine($"Error: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                OutputChatLine($"Error: {ex.Message}");
+            }
         }
     }
 }
