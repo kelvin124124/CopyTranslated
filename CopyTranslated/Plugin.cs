@@ -106,7 +106,6 @@ namespace CopyTranslated
 
         private void Initialize()
         {
-            isLanguagePackUsedCache = IsLanguagePackUsed();
             try
             {
                 itemSheetCache = dataManager.GetExcelSheet<Item>(MapLanguageToClientLanguage(Configuration.SelectedLanguage));
@@ -116,6 +115,9 @@ namespace CopyTranslated
                 OutputChatLine($"Error: Failed to fetch Excel sheet for language {Configuration.SelectedLanguage}. " +
                     $"Details: {ex.Message}");
             }
+            isLanguagePackUsedCache = IsLanguagePackUsed(itemSheetCache);
+
+            languageAbbreviationCache.Clear();
         }
 
         internal void OutputChatLine(SeString message)
@@ -183,7 +185,7 @@ namespace CopyTranslated
             GetItemInfoAndCopyToClipboard(args.ItemId, Configuration.SelectedLanguage);
         }
 
-        private bool IsLanguagePackUsed()
+        private bool IsLanguagePackUsed(ExcelSheet<Item>? sheet)
         {
             if (clientState.ClientLanguage != MapLanguageToClientLanguage(Configuration.SelectedLanguage)) return false;
 
@@ -208,7 +210,6 @@ namespace CopyTranslated
                     break;
             }
 
-            var sheet = dataManager.GetExcelSheet<Item>();
             var retrievedItemName = sheet?.GetRow(5059)?.Name ?? "";
 
             if (string.IsNullOrEmpty(retrievedItemName)) return true;
