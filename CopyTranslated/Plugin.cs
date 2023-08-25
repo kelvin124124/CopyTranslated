@@ -84,23 +84,19 @@ namespace CopyTranslated
         internal void OutputChatLine(SeString message)
         {
             SeStringBuilder sb = new();
-            sb.AddUiForeground(45)
-              .AddText("[Item Translated] ")
-              .AddUiForegroundOff()
-              .Append(message);
+            sb.AddUiForeground("[Item Translated] ", 45).Append(message);
 
             chatGui.PrintChat(new XivChatEntry { Message = sb.BuiltString });
         }
 
         private void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
         {
-            if (args.ObjectWorld == 0)
-                args.AddCustomItem(gameObjectContextMenuItem);
+            if (args.ObjectWorld != 0) return;
+            args.AddCustomItem(gameObjectContextMenuItem);
         }
 
         private void OpenInventoryContextMenu(InventoryContextMenuOpenArgs args)
         {
-            if (args.ItemId == 0) OutputChatLine("Error: inventory ItemID = 0");
             args.AddCustomItem(inventoryContextMenuItem);
         }
 
@@ -110,8 +106,22 @@ namespace CopyTranslated
 
             switch (args.ParentAddonName)
             {
+                case "ContentsInfoDetail":
+                    {
+                        UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
+                        AgentModule* agents = uiModule->GetAgentModule();
+                        AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
+                        itemId = *(uint*)((nint)agent + 0x17CC);
+                        break;
+                    }
                 case "RecipeNote":
                     itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x398);
+                    break;
+                case "ChatLog":
+                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x948);
+                    break;
+                case "DailyQuestSupply":
+                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x54);
                     break;
                 case "RecipeTree":
                 case "RecipeMaterialList":
@@ -122,20 +132,6 @@ namespace CopyTranslated
                         itemId = *(uint*)((nint)agent + 0x28);
                         break;
                     }
-                case "ChatLog":
-                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x948);
-                    break;
-                case "ContentsInfoDetail":
-                    {
-                        UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
-                        AgentModule* agents = uiModule->GetAgentModule();
-                        AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
-                        itemId = *(uint*)((nint)agent + 0x17CC);
-                        break;
-                    }
-                case "DailyQuestSupply":
-                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x54);
-                    break;
                 default:
                     itemId = (uint)gameGui.HoveredItem;
                     if (itemId == 0) OutputChatLine($"Error: {itemId},{args.ParentAddonName}\nReport to developer.");
@@ -154,6 +150,8 @@ namespace CopyTranslated
         {
             "English" => "en",
             "Japanese" => "ja",
+            "German" => "de",
+            "French" => "fr",
             _ => "en"
         };
 
