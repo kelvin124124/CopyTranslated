@@ -21,7 +21,8 @@
 
 ## Settings ⚙️
 
-Open the plugin settings to select your desired language for translation. Supported languages include English, Japanese, and more (in the future).
+Open the plugin settings to select your desired language for translation. Supported languages include 
+English, Japanese, German, French and more (in the future).
 
 ## Contributing 🤝
 
