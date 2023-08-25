@@ -292,10 +292,13 @@ namespace CopyTranslated
                 var match = Regex.Match(jsonContent, @":\""(.*?)\""}");
 
                 string itemName = match.Groups[1].Value;
+
+                if (filter == "Name_chs") itemName = Regex.Unescape(itemName);
                 if (string.IsNullOrEmpty(itemName))
                 {
                     OutputChatLine($"Error: API error at {DateTime.Now:HH:mm:ss tt} {apiUrl} returned {jsonContent}");
                 }
+
                 else
                 {
                     ImGui.SetClipboardText(itemName);
