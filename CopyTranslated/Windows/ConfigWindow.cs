@@ -8,7 +8,7 @@ namespace CopyTranslated.Windows
     public class ConfigWindow : Window, IDisposable
     {
         private readonly Configuration configuration;
-        private readonly string[] languages = { "English", "Japanese" };
+        private readonly string[] languages = { "English", "Japanese", "German", "French" };
 
         public ConfigWindow(Plugin plugin) : base(
             "Copy Translated config",
