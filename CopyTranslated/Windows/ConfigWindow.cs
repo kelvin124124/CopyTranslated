@@ -10,6 +10,8 @@ namespace CopyTranslated.Windows
         private readonly Configuration configuration;
         private readonly string[] languages = { "English", "Japanese", "German", "French" };
 
+        public event Action? OnLanguageChanged;
+
         public ConfigWindow(Plugin plugin) : base(
             "Copy Translated config",
             ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
@@ -40,6 +42,7 @@ namespace CopyTranslated.Windows
             {
                 configuration.SelectedLanguage = languages[currentLanguageIndex];
                 configuration.Save();
+                OnLanguageChanged?.Invoke();
             }
         }
     }
