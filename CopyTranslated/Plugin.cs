@@ -166,6 +166,7 @@ namespace CopyTranslated
                     break;
                 case "ChatLog":
                     itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x948);
+                    if (itemId > 1000000) itemId -= 1000000;
                     break;
                 case "DailyQuestSupply":
                     itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x54);
@@ -303,7 +304,7 @@ namespace CopyTranslated
 
                 var match = Regex.Match(jsonContent, @":\""(.*?)\""}");
 
-                string itemName = match.Groups[1].Value;
+                string itemName = match.Groups[1].Value ?? "";
 
                 if (filter == "Name_chs")
                 {
