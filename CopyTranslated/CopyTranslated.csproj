@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Authors>LKelvin</Authors>
+    <Authors>kelvin124124</Authors>
     <Company></Company>
     <Version>1.0.0</Version>
     <Description>Copy translated item name by right-clicking.</Description>
