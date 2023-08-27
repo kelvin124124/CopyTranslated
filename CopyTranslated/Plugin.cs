@@ -138,6 +138,7 @@ namespace CopyTranslated
 
         private void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
         {
+            // prevent showing the option when player is selected
             if (args.ObjectWorld != 0) return;
             args.AddCustomItem(gameObjectContextMenuItem);
         }
@@ -193,35 +194,21 @@ namespace CopyTranslated
             GetItemInfoAndCopyToClipboard(args.ItemId, Configuration.SelectedLanguage);
         }
 
+        // Detect language packs
         private bool IsSheetAvailable(ExcelSheet<Item>? sheet)
         {
             if (clientState.ClientLanguage != MapLanguageToClientLanguage(Configuration.SelectedLanguage)) return true;
 
-            string testItemName;
-
-            switch (clientState.ClientLanguage)
+            var testItemNames = new Dictionary<ClientLanguage, string>
             {
-                case ClientLanguage.English:
-                    testItemName = "Cobalt Ingot";
-                    break;
-                case ClientLanguage.Japanese:
-                    testItemName = "コバルトインゴット";
-                    break;
-                case ClientLanguage.German:
-                    testItemName = "Koboldeisenbarren";
-                    break;
-                case ClientLanguage.French:
-                    testItemName = "Lingot de cobalt";
-                    break;
-                default:
-                    testItemName = "Cobalt Ingot";
-                    break;
-            }
+                { ClientLanguage.English, "Cobalt Ingot" },
+                { ClientLanguage.Japanese, "コバルトインゴット" },
+                { ClientLanguage.German, "Koboldeisenbarren" },
+                { ClientLanguage.French, "Lingot de cobalt" }
+            };
 
-            var retrievedItemName = sheet?.GetRow(5059)?.Name ?? "";
-
-            if (string.IsNullOrEmpty(retrievedItemName)) return false;
-            return retrievedItemName == testItemName;
+            var testItemName = testItemNames.GetValueOrDefault(clientState.ClientLanguage, "Cobalt Ingot");
+            return (sheet?.GetRow(5059)?.Name ?? "") == testItemName;
         }
 
         public void GetItemInfoAndCopyToClipboard(uint itemId, string language)
@@ -251,7 +238,6 @@ namespace CopyTranslated
 
         private static ClientLanguage MapLanguageToClientLanguage(string fullLanguageName) => fullLanguageName switch
         {
-            "English" => ClientLanguage.English,
             "Japanese" => ClientLanguage.Japanese,
             "German" => ClientLanguage.German,
             "French" => ClientLanguage.French,
@@ -309,10 +295,10 @@ namespace CopyTranslated
                 if (filter == "Name_chs")
                 {
                     itemName = Regex.Unescape(itemName);
-                    if (isTraditionalChinese) 
+                    if (isTraditionalChinese)
                     {
                         itemName = ChineseConverter.Convert(itemName, ChineseConversionDirection.SimplifiedToTraditional);
-                    } ; 
+                    };
                 }
                 if (string.IsNullOrEmpty(itemName))
                 {
