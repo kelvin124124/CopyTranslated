@@ -10,11 +10,11 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
-using Dalamud.Memory;
 using Dalamud.Plugin;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FGui = FFXIVClientStructs.FFXIV.Component.GUI;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using FGui = FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace CopyTranslated
 {
@@ -31,19 +32,15 @@ namespace CopyTranslated
     {
         public string Name => "CopyTranslated";
         private const string CommandName = "/pct";
-
         private readonly DalamudPluginInterface pluginInterface;
         private readonly CommandManager commandManager;
-
         private readonly ChatGui chatGui;
         private readonly GameGui gameGui;
         private readonly ClientState clientState;
         private readonly DataManager dataManager;
-
         private readonly DalamudContextMenu contextMenu;
         private readonly GameObjectContextMenuItem gameObjectContextMenuItem;
         private readonly InventoryContextMenuItem inventoryContextMenuItem;
-
         public Configuration Configuration { get; }
         public WindowSystem WindowSystem { get; } = new("ItemTranslatorPlugin");
         private readonly ConfigWindow configWindow;
@@ -53,16 +50,9 @@ namespace CopyTranslated
         private ExcelSheet<Item>? itemSheetCache;
         private readonly Dictionary<string, string> languageFilterCache = new();
 
-        private readonly HashSet<string> validAddons = new HashSet<string>
+        private readonly string[] complexAddon =
         {
-            "ContentsInfoDetail",
-            "RecipeNote",
-            "ChatLog",
-            "DailyQuestSupply",
-            "GrandCompanySupplyList",
-            "RecipeTree",
-            "RecipeMaterialList",
-            "FreeCompanyChest"
+            "SatisfactionSupply"
         };
 
         public Plugin(
@@ -91,11 +81,15 @@ namespace CopyTranslated
 
             contextMenu = new DalamudContextMenu();
             gameObjectContextMenuItem = new GameObjectContextMenuItem(
-                new SeString(new TextPayload("Copy Translated")), Lookup, true);
+                new SeString(new TextPayload("Copy Translated")),
+                async (selectedArgs) => { await DelayedLookup(selectedArgs); },
+                true);
             contextMenu.OnOpenGameObjectContextMenu += OpenGameObjectContextMenu;
 
             inventoryContextMenuItem = new InventoryContextMenuItem(
-                new SeString(new TextPayload("Copy Translated")), InventoryLookup, true);
+                new SeString(new TextPayload("Copy Translated")),
+                InventoryLookup,
+                true);
             contextMenu.OnOpenInventoryContextMenu += OpenInventoryContextMenu;
 
             commandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
@@ -128,11 +122,8 @@ namespace CopyTranslated
         {
             configWindow.IsOpen = true;
         }
-
         private void DrawUI() => WindowSystem.Draw();
-
         public void DrawConfigUI() => configWindow.IsOpen = true;
-
         private void Initialize()
         {
             isTraditionalChinese = false;
@@ -150,62 +141,35 @@ namespace CopyTranslated
 
             languageFilterCache.Clear();
         }
-
         internal void OutputChatLine(SeString message)
         {
             SeStringBuilder sb = new();
-            sb.AddUiForeground("[Item Translated] ", 45).Append(message);
+            sb.AddUiForeground("[Copy Translated] ", 58).Append(message);
 
             chatGui.PrintChat(new XivChatEntry { Message = sb.BuiltString });
         }
-        private unsafe FGui.AtkUnitBase* GetAtkUnitBaseUsingGameGui()
+        private async Task DelayedLookup(GameObjectContextMenuItemSelectedArgs args)
         {
-            var addon = (FGui.AtkUnitBase*)gameGui.GetAddonByName("DailyQuestSupply");
-            return addon;
+            await Task.Delay(50); // Allow context menu to close
+            Lookup(args);
         }
-
         private unsafe void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
         {
             // prevent showing the option when player is selected
             if (args.ObjectWorld != 0) return;
 
-            if (validAddons.Contains(args.ParentAddonName ?? ""))
-            {
-                args.AddCustomItem(gameObjectContextMenuItem);
-            }
+            args.AddCustomItem(gameObjectContextMenuItem);
         }
-
-
-
         private void OpenInventoryContextMenu(InventoryContextMenuOpenArgs args)
         {
             args.AddCustomItem(inventoryContextMenuItem);
         }
-
+        private void InventoryLookup(InventoryContextMenuItemSelectedArgs args)
+        {
+            GetItemInfoAndCopyToClipboard(args.ItemId, Configuration.SelectedLanguage);
+        }
         private unsafe void Lookup(GameObjectContextMenuItemSelectedArgs args)
         {
-
-            var atkUnitBase = GetAtkUnitBaseUsingGameGui();
-
-            FGui.AtkStage* currentStage = FGui.AtkStage.GetSingleton();
-            FGui.AtkResNode* atkResNode = currentStage->GetFocus();
-            //IntPtr vTableAddress = *(IntPtr*)atkResNode;
-            //FGui.AtkResNode.AtkResNodeVTable* atkResNodeVTable = (FGui.AtkResNode.AtkResNodeVTable*)vTableAddress;
-
-            OutputChatLine($"AtkResNode: {new IntPtr(atkResNode):X}");
-            //OutputChatLine($"AtkResNodeVTable: {vTableAddress}:X");
-
-            if (atkUnitBase != null)
-            {
-                OutputChatLine($"AtkUnitBase from GameGui: {MemoryHelper.ReadString((nint)atkUnitBase->Name, 0x20)}");
-                FGui.AtkResNode* rootNode = atkUnitBase->RootNode;
-                OutputChatLine($"AtkUnitBase RootNode: {new IntPtr(rootNode):X}");
-            }
-            else
-            {
-                OutputChatLine($"AtkUnitBase from GameGui: null");
-            }
-
             uint itemId = 0;
 
             switch (args.ParentAddonName)
@@ -214,7 +178,7 @@ namespace CopyTranslated
                     {
                         UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
                         AgentModule* agents = uiModule->GetAgentModule();
-                        FGui.AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
+                        AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
 
                         itemId = *(uint*)((nint)agent + 0x17CC);
                         break;
@@ -235,7 +199,7 @@ namespace CopyTranslated
                     {
                         UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
                         AgentModule* agents = uiModule->GetAgentModule();
-                        FGui.AgentInterface* agent = agents->GetAgentByInternalId(AgentId.RecipeItemContext);
+                        AgentInterface* agent = agents->GetAgentByInternalId(AgentId.RecipeItemContext);
 
                         itemId = *(uint*)((nint)agent + 0x28);
                         break;
@@ -244,16 +208,75 @@ namespace CopyTranslated
                     itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x508);
                     break;
                 default:
-                    itemId = (uint)gameGui.HoveredItem;
-                    if (itemId == 0) OutputChatLine($"Error: {itemId}, {args.ParentAddonName}\nReport to developer.");
+                    MatchComplexCases();
                     break;
             }
+
             GetItemInfoAndCopyToClipboard(itemId, Configuration.SelectedLanguage);
         }
-
-        private void InventoryLookup(InventoryContextMenuItemSelectedArgs args)
+        private unsafe FGui.AtkUnitBase* GetAtkUnitBaseUsingGameGui(string AddonName)
         {
-            GetItemInfoAndCopyToClipboard(args.ItemId, Configuration.SelectedLanguage);
+            var addon = (FGui.AtkUnitBase*)gameGui.GetAddonByName(AddonName);
+            return addon;
+        }
+        private unsafe FGui.AtkResNode* FindRootNode(FGui.AtkResNode* startNode)
+        {
+            FGui.AtkResNode* currentNode = startNode;
+            int traceCount = 0;
+
+            while (currentNode->ParentNode != null && traceCount < 10)
+            {
+                currentNode = currentNode->ParentNode;
+                traceCount++;
+            }
+            return currentNode;
+        }
+        private unsafe string CompareRootNode(IntPtr intfRootNode, string[] addonNames)
+        {
+            foreach (var addonName in addonNames)
+            {
+                var atkUnitBase = GetAtkUnitBaseUsingGameGui(addonName);
+                if (atkUnitBase == null) continue;
+
+                FGui.AtkResNode* rootNode = atkUnitBase->RootNode;
+                if (rootNode == null) continue;
+
+                if (new IntPtr(rootNode) == intfRootNode) return addonName;
+            }
+            return "";
+        }
+        private unsafe void MatchComplexCases()
+        {
+            uint itemId1, itemId2, itemId3;
+            FGui.AtkStage* currentStage = FGui.AtkStage.GetSingleton();
+            FGui.AtkResNode* atkResNode = currentStage->GetFocus();
+            FGui.AtkResNode* fRootNode = FindRootNode(atkResNode);
+
+            string matchedAddon = CompareRootNode(new IntPtr(fRootNode), complexAddon);
+            if (matchedAddon.IsNullOrEmpty())
+            {
+                OutputChatLine($"Error: No match found for RootNode: {new IntPtr(fRootNode):X}");
+                return;
+            }
+
+            switch (matchedAddon)
+            {
+                case "SatisfactionSupply":
+
+                    itemId1 = *(uint*)(gameGui.FindAgentInterface(matchedAddon) + 0x80);
+                    itemId2 = *(uint*)(gameGui.FindAgentInterface(matchedAddon) + 0xBC);
+                    itemId3 = *(uint*)(gameGui.FindAgentInterface(matchedAddon) + 0xF8);
+
+                    GetItemInfoAndCopyToClipboard(itemId1, Configuration.SelectedLanguage);
+                    GetItemInfoAndCopyToClipboard(itemId2, Configuration.SelectedLanguage);
+                    GetItemInfoAndCopyToClipboard(itemId3, Configuration.SelectedLanguage);
+                    OutputChatLine("**WARNING: multiple items detected**");
+
+                    break;
+
+                default:
+                    break;
+            }
         }
 
         // Detect language packs
@@ -272,7 +295,6 @@ namespace CopyTranslated
             var testItemName = testItemNames.GetValueOrDefault(clientState.ClientLanguage, "Cobalt Ingot");
             return (sheet?.GetRow(5059)?.Name ?? "") == testItemName;
         }
-
         public void GetItemInfoAndCopyToClipboard(uint itemId, string language)
         {
             if (itemId == 0) return;
@@ -297,7 +319,6 @@ namespace CopyTranslated
                 OutputChatLine($"Item copied: {itemName}");
             }
         }
-
         private static ClientLanguage MapLanguageToClientLanguage(string fullLanguageName) => fullLanguageName switch
         {
             "English" => ClientLanguage.English,
@@ -306,7 +327,6 @@ namespace CopyTranslated
             "French" => ClientLanguage.French,
             _ => ClientLanguage.English
         };
-
         private string MapLanguageToFilter(string fullLanguageName)
         {
             if (languageFilterCache.TryGetValue(fullLanguageName, out var Filter))
@@ -335,9 +355,7 @@ namespace CopyTranslated
             languageFilterCache[fullLanguageName] = Filter;
             return Filter;
         }
-
         private static Lazy<HttpClient> LazyHttpClient = new Lazy<HttpClient>(() => new HttpClient());
-
         private async Task GetItemNameByApi(uint itemId, string language)
         {
             if (itemId == 0)
