@@ -29,6 +29,7 @@ namespace CopyTranslated
     public sealed class Plugin : IDalamudPlugin
     {
         public string Name => "CopyTranslated";
+        private const string CommandName = "/pct";
 
         private readonly DalamudPluginInterface pluginInterface;
         private readonly CommandManager commandManager;
@@ -84,6 +85,11 @@ namespace CopyTranslated
                 new SeString(new TextPayload("Copy Translated")), InventoryLookup, true);
             contextMenu.OnOpenInventoryContextMenu += OpenInventoryContextMenu;
 
+            commandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
+            {
+                HelpMessage = "Open copy translated configuration window."
+            });
+
             Initialize();
             configWindow.OnLanguageChanged += Initialize;
         }
@@ -104,6 +110,10 @@ namespace CopyTranslated
             languageFilterCache.Clear();
 
             if (LazyHttpClient.IsValueCreated) LazyHttpClient.Value.Dispose();
+        }
+        private void OnCommand(string command, string args)
+        {
+            configWindow.IsOpen = true;
         }
 
         private void DrawUI() => WindowSystem.Draw();
@@ -140,7 +150,16 @@ namespace CopyTranslated
         {
             // prevent showing the option when player is selected
             if (args.ObjectWorld != 0) return;
-            args.AddCustomItem(gameObjectContextMenuItem);
+            if (args.ParentAddonName != "ContentsInfoDetail"
+                || args.ParentAddonName != "RecipeNote"
+                || args.ParentAddonName != "ChatLog"
+                || args.ParentAddonName != "DailyQuestSupply"
+                || args.ParentAddonName != "GrandCompanySupplyList"
+                || args.ParentAddonName != "RecipeTree"
+                || args.ParentAddonName != "RecipeMaterialList"
+                || args.ParentAddonName != "FreeCompanyChest")
+
+                args.AddCustomItem(gameObjectContextMenuItem);
         }
 
         private void OpenInventoryContextMenu(InventoryContextMenuOpenArgs args)
@@ -150,7 +169,7 @@ namespace CopyTranslated
 
         private unsafe void Lookup(GameObjectContextMenuItemSelectedArgs args)
         {
-            uint itemId;
+            uint itemId = 0;
 
             switch (args.ParentAddonName)
             {
@@ -159,6 +178,7 @@ namespace CopyTranslated
                         UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
                         AgentModule* agents = uiModule->GetAgentModule();
                         AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
+
                         itemId = *(uint*)((nint)agent + 0x17CC);
                         break;
                     }
@@ -167,9 +187,10 @@ namespace CopyTranslated
                     break;
                 case "ChatLog":
                     itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x948);
-                    if (itemId > 1000000) itemId -= 1000000;
+                    if (itemId > 1000000) itemId = itemId % 500000;
                     break;
                 case "DailyQuestSupply":
+                case "GrandCompanySupplyList":
                     itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x54);
                     break;
                 case "RecipeTree":
@@ -178,12 +199,16 @@ namespace CopyTranslated
                         UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
                         AgentModule* agents = uiModule->GetAgentModule();
                         AgentInterface* agent = agents->GetAgentByInternalId(AgentId.RecipeItemContext);
+
                         itemId = *(uint*)((nint)agent + 0x28);
                         break;
                     }
+                case "FreeCompanyChest":
+                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x508);
+                    break;
                 default:
                     itemId = (uint)gameGui.HoveredItem;
-                    if (itemId == 0) OutputChatLine($"Error: {itemId},{args.ParentAddonName}\nReport to developer.");
+                    if (itemId == 0) OutputChatLine($"Error: {itemId}, {args.ParentAddonName}\nReport to developer.");
                     break;
             }
             GetItemInfoAndCopyToClipboard(itemId, Configuration.SelectedLanguage);
@@ -238,6 +263,7 @@ namespace CopyTranslated
 
         private static ClientLanguage MapLanguageToClientLanguage(string fullLanguageName) => fullLanguageName switch
         {
+            "English" => ClientLanguage.English,
             "Japanese" => ClientLanguage.Japanese,
             "German" => ClientLanguage.German,
             "French" => ClientLanguage.French,
@@ -277,7 +303,11 @@ namespace CopyTranslated
 
         private async Task GetItemNameByApi(uint itemId, string language)
         {
-            if (itemId == 0) return;
+            if (itemId == 0)
+            {
+                ImGui.SetClipboardText("");
+                return;
+            }
 
             var filter = MapLanguageToFilter(language);
             string apiUrl = filter == "Name_chs" ?
