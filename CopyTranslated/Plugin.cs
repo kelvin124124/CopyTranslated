@@ -52,6 +52,18 @@ namespace CopyTranslated
         private ExcelSheet<Item>? itemSheetCache;
         private readonly Dictionary<string, string> languageFilterCache = new();
 
+        private readonly HashSet<string> validAddons = new HashSet<string>
+        {
+            "ContentsInfoDetail",
+            "RecipeNote",
+            "ChatLog",
+            "DailyQuestSupply",
+            "GrandCompanySupplyList",
+            "RecipeTree",
+            "RecipeMaterialList",
+            "FreeCompanyChest"
+        };
+
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
             [RequiredVersion("1.0")] CommandManager commandManager,
@@ -150,16 +162,10 @@ namespace CopyTranslated
         {
             // prevent showing the option when player is selected
             if (args.ObjectWorld != 0) return;
-            if (args.ParentAddonName != "ContentsInfoDetail"
-                || args.ParentAddonName != "RecipeNote"
-                || args.ParentAddonName != "ChatLog"
-                || args.ParentAddonName != "DailyQuestSupply"
-                || args.ParentAddonName != "GrandCompanySupplyList"
-                || args.ParentAddonName != "RecipeTree"
-                || args.ParentAddonName != "RecipeMaterialList"
-                || args.ParentAddonName != "FreeCompanyChest") return;
-
+            if (validAddons.Contains(args.ParentAddonName ?? ""))
+            {
                 args.AddCustomItem(gameObjectContextMenuItem);
+            }
         }
 
         private void OpenInventoryContextMenu(InventoryContextMenuOpenArgs args)
