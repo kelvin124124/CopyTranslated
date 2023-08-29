@@ -10,10 +10,11 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
+using Dalamud.Memory;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FFXIVClientStructs.FFXIV.Component.GUI;
+using FGui = FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
@@ -157,16 +158,24 @@ namespace CopyTranslated
 
             chatGui.PrintChat(new XivChatEntry { Message = sb.BuiltString });
         }
+        private unsafe FGui.AtkUnitBase* GetAtkUnitBaseUsingGameGui()
+        {
+            var addon = (FGui.AtkUnitBase*)gameGui.GetAddonByName("DailyQuestSupply");
+            return addon;
+        }
 
-        private void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
+        private unsafe void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
         {
             // prevent showing the option when player is selected
             if (args.ObjectWorld != 0) return;
+
             if (validAddons.Contains(args.ParentAddonName ?? ""))
             {
                 args.AddCustomItem(gameObjectContextMenuItem);
             }
         }
+
+
 
         private void OpenInventoryContextMenu(InventoryContextMenuOpenArgs args)
         {
@@ -175,6 +184,28 @@ namespace CopyTranslated
 
         private unsafe void Lookup(GameObjectContextMenuItemSelectedArgs args)
         {
+
+            var atkUnitBase = GetAtkUnitBaseUsingGameGui();
+
+            FGui.AtkStage* currentStage = FGui.AtkStage.GetSingleton();
+            FGui.AtkResNode* atkResNode = currentStage->GetFocus();
+            //IntPtr vTableAddress = *(IntPtr*)atkResNode;
+            //FGui.AtkResNode.AtkResNodeVTable* atkResNodeVTable = (FGui.AtkResNode.AtkResNodeVTable*)vTableAddress;
+
+            OutputChatLine($"AtkResNode: {new IntPtr(atkResNode):X}");
+            //OutputChatLine($"AtkResNodeVTable: {vTableAddress}:X");
+
+            if (atkUnitBase != null)
+            {
+                OutputChatLine($"AtkUnitBase from GameGui: {MemoryHelper.ReadString((nint)atkUnitBase->Name, 0x20)}");
+                FGui.AtkResNode* rootNode = atkUnitBase->RootNode;
+                OutputChatLine($"AtkUnitBase RootNode: {new IntPtr(rootNode):X}");
+            }
+            else
+            {
+                OutputChatLine($"AtkUnitBase from GameGui: null");
+            }
+
             uint itemId = 0;
 
             switch (args.ParentAddonName)
@@ -183,7 +214,7 @@ namespace CopyTranslated
                     {
                         UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
                         AgentModule* agents = uiModule->GetAgentModule();
-                        AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
+                        FGui.AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
 
                         itemId = *(uint*)((nint)agent + 0x17CC);
                         break;
@@ -204,7 +235,7 @@ namespace CopyTranslated
                     {
                         UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
                         AgentModule* agents = uiModule->GetAgentModule();
-                        AgentInterface* agent = agents->GetAgentByInternalId(AgentId.RecipeItemContext);
+                        FGui.AgentInterface* agent = agents->GetAgentByInternalId(AgentId.RecipeItemContext);
 
                         itemId = *(uint*)((nint)agent + 0x28);
                         break;
