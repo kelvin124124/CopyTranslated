@@ -157,7 +157,7 @@ namespace CopyTranslated
                 || args.ParentAddonName != "GrandCompanySupplyList"
                 || args.ParentAddonName != "RecipeTree"
                 || args.ParentAddonName != "RecipeMaterialList"
-                || args.ParentAddonName != "FreeCompanyChest")
+                || args.ParentAddonName != "FreeCompanyChest") return;
 
                 args.AddCustomItem(gameObjectContextMenuItem);
         }
