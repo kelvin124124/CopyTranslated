@@ -59,9 +59,11 @@ namespace CopyTranslated
             "ChatLog",
             "DailyQuestSupply",
             "GrandCompanySupplyList",
+            "GrandCompanyExchange",
             "RecipeTree",
             "RecipeMaterialList",
-            "FreeCompanyChest"
+            "FreeCompanyChest",
+            "ShopExchangeCurrency"
         };
 
         public Plugin(
@@ -197,6 +199,8 @@ namespace CopyTranslated
                     break;
                 case "DailyQuestSupply":
                 case "GrandCompanySupplyList":
+                case "GrandCompanyExchange":
+                case "ShopExchangeCurrency":
                     itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x54);
                     break;
                 case "RecipeTree":
