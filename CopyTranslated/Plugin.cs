@@ -29,7 +29,7 @@ namespace CopyTranslated
     public sealed class Plugin : IDalamudPlugin
     {
         public string Name => "CopyTranslated";
-        private const string CommandName = "/pct";
+        private const string CommandName = "/pctranslate";
 
         private readonly DalamudPluginInterface pluginInterface;
         private readonly CommandManager commandManager;
@@ -44,7 +44,7 @@ namespace CopyTranslated
         private readonly InventoryContextMenuItem inventoryContextMenuItem;
 
         public Configuration Configuration { get; }
-        public WindowSystem WindowSystem { get; } = new("ItemTranslatorPlugin");
+        public WindowSystem WindowSystem { get; } = new("CopyTranslated");
         private readonly ConfigWindow configWindow;
 
         private bool? isSheetAvailableCache;
