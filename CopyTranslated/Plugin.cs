@@ -64,6 +64,7 @@ namespace CopyTranslated
             "RecipeMaterialList",
             "FreeCompanyChest",
             "ShopExchangeCurrency",
+            "ShopExchangeItem",
             "Shop"
         };
 
@@ -202,6 +203,7 @@ namespace CopyTranslated
                 case "GrandCompanySupplyList":
                 case "GrandCompanyExchange":
                 case "ShopExchangeCurrency":
+                case "ShopExchangeItem":
                 case "Shop":
                     itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x54);
                     break;
