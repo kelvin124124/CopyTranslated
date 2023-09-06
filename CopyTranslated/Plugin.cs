@@ -157,7 +157,7 @@ namespace CopyTranslated
         internal void OutputChatLine(SeString message)
         {
             SeStringBuilder sb = new();
-            sb.AddUiForeground("[Item Translated] ", 58).Append(message);
+            sb.AddUiForeground("[CopyTranslated] ", 58).Append(message);
 
             chatGui.PrintChat(new XivChatEntry { Message = sb.BuiltString });
         }
