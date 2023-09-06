@@ -11,7 +11,7 @@
 https://github.com/kelvin124124/CopyTranslated/assets/19372340/9e25a58b-17ab-49de-a344-c24f32f32c4c  
 
 ## 安裝 🔧
-0.如果你沒有安裝插件的經驗，請先左轉安裝Dalamud windows:[FFXIVQuickLauncher](https://github.com/goatcorp/FFXIVQuickLauncher)
+0.如果你沒有安裝插件的經驗，請先左轉安裝Dalamud （windows:[FFXIVQuickLauncher](https://github.com/goatcorp/FFXIVQuickLauncher)）
 mac:[XIV-on-Mac](https://github.com/marzent/XIV-on-Mac)  
 1.按Esc鍵打開選單，選擇Dalamud plugins->All plugins  
 2.在右上搜索欄搜索 Copy Translated 並安裝  
