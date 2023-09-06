@@ -1,38 +1,25 @@
-# Copy Translated - FFXIV Dalamud Plugin
+# Copy Translated
 <div align="center">
 
 [English](README.md) | 繁體中文
 
 </div>
-🛠️翻譯中
 
-"Copy Translated" is a plugin for the FFXIV Dalamud modding framework that allows users to effortlessly copy translated in-game item names with just a single click from the context menu. Perfect for users with custom language pack installed!
+"Copy Translated" 是為FFXIV(FF14/Final Fantasy 14)而設的Dalamud插件。顧名思義，能夠讓使用者在遊戲內直接複製經翻譯的道具名稱。  
 
-  - **Before**: Copy item name -> Google for item -> Paste translated name in websites (or marketboard)
-  - **Now**: Skip Google entirely. Direct copy from the game.
+## 操作
+https://github.com/kelvin124124/CopyTranslated/assets/19372340/9e25a58b-17ab-49de-a344-c24f32f32c4c  
 
-## Feature Showcase
-https://github.com/kelvin124124/CopyTranslated/assets/19372340/9e25a58b-17ab-49de-a344-c24f32f32c4c
+## 安裝 🔧
+0.如果你沒有安裝插件的經驗，請先左轉安裝Dalamud windows:[FFXIVQuickLauncher](https://github.com/goatcorp/FFXIVQuickLauncher)
+mac:[XIV-on-Mac](https://github.com/marzent/XIV-on-Mac)  
+1.按Esc鍵打開選單，選擇Dalamud plugins->All plugins  
+2.在右上搜索欄搜索 Copy Translated 並安裝  
 
-## Installation 🔧
-(Work in progress.)
+## 使用 🎮
+在物品上右鍵，在選單中選擇"Copy Translated"，物品名稱會複製到系統粘貼板上  
 
-## Usage 🎮
-1. Right-click on any in-game item.
-2. Click on "Copy Translated" from the context menu.
-3. The item name is now copied to your clipboard in your selected language.
-
-## Settings ⚙️
-Open the plugin configuration window to select your desired language for translation. Supported languages include 
-English, Japanese, German, French, Chinese (Simplified) and Chinese (Traditional).
-
-## To-do(s) 🎯
-Add support to more UI elements  
-Command & window for in-game item translator (maybe)  
-
-## Contributing 🤝
-Contributions are welcome! Feel free to open an issue or submit a pull request.
-
-## License 📜
-This project is licensed under the [MIT License](LICENSE).
+## 語言 ⚙️
+在遊戲中輸入 /pcopy 打開選單並選擇翻譯語言  
+現時支援語言為：英文，日文，法文，德文，中文（簡體及繁體）  
 
