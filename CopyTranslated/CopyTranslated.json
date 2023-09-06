@@ -2,7 +2,7 @@
     "Author": "kelvin124124",
     "Name": "CopyTranslated",
     "Punchline": "Copy translated item name by right-clicking.",
-    "Description": "",
+    "Description": "Copy translated item name by right-clicking.",
     "InternalName": "CopyTranslated",
     "ApplicableVersion": "any",
     "Tags": [
