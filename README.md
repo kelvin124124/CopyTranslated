@@ -13,7 +13,9 @@ English | [繁體中文](README_zh-TW.md)
 https://github.com/kelvin124124/CopyTranslated/assets/19372340/9e25a58b-17ab-49de-a344-c24f32f32c4c
 
 ## Installation 🔧
-(Work in progress.)
+1. Install Dalamud（windows:[FFXIVQuickLauncher](https://github.com/goatcorp/FFXIVQuickLauncher)
+mac:[XIV-on-Mac](https://github.com/marzent/XIV-on-Mac)）
+2. Search for "Copy Translated" in the plugin list and install it
 
 ## Usage 🎮
 1. Right-click on any in-game item.
@@ -21,8 +23,8 @@ https://github.com/kelvin124124/CopyTranslated/assets/19372340/9e25a58b-17ab-49d
 3. The item name is now copied to your clipboard in your selected language.
 
 ## Settings ⚙️
-Open the plugin configuration window to select your desired language for translation. Supported languages include 
-English, Japanese, German, French, Chinese (Simplified) and Chinese (Traditional).
+/pcopy in game chat to open the plugin configuration window to select your desired language for translation. Supported languages include 
+English, Japanese, German, French, Chinese (Simplified and Traditional).
 
 ## To-do(s) 🎯
 Add support to more UI elements  
