@@ -29,7 +29,7 @@ namespace CopyTranslated
     public sealed class Plugin : IDalamudPlugin
     {
         public string Name => "CopyTranslated";
-        private const string CommandName = "/pctranslate";
+        private const string CommandName = "/pcopy";
 
         private readonly DalamudPluginInterface pluginInterface;
         private readonly CommandManager commandManager;
