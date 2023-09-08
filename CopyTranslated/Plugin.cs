@@ -65,8 +65,10 @@ namespace CopyTranslated
             "FreeCompanyChest",
             "ShopExchangeCurrency",
             "ShopExchangeItem",
-            "Shop"
+            "Shop",
+            "ItemSearch"
         };
+        private uint hoveredItemId = 0;
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -157,7 +159,7 @@ namespace CopyTranslated
         internal void OutputChatLine(SeString message)
         {
             SeStringBuilder sb = new();
-            sb.AddUiForeground("[CopyTranslated] ", 58).Append(message);
+            sb.AddUiForeground("[CT] ", 58).Append(message);
 
             chatGui.PrintChat(new XivChatEntry { Message = sb.BuiltString });
         }
@@ -166,8 +168,10 @@ namespace CopyTranslated
         {
             // prevent showing the option when player is selected
             if (args.ObjectWorld != 0) return;
+
             if (validAddons.Contains(args.ParentAddonName ?? ""))
             {
+                hoveredItemId = (uint)gameGui.HoveredItem;
                 args.AddCustomItem(gameObjectContextMenuItem);
             }
         }
@@ -179,7 +183,7 @@ namespace CopyTranslated
 
         private unsafe void Lookup(GameObjectContextMenuItemSelectedArgs args)
         {
-            uint itemId = 0;
+            uint itemId = hoveredItemId;
 
             switch (args.ParentAddonName)
             {
@@ -221,7 +225,6 @@ namespace CopyTranslated
                     itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x508);
                     break;
                 default:
-                    itemId = (uint)gameGui.HoveredItem;
                     if (itemId == 0) OutputChatLine($"Error: {itemId}, {args.ParentAddonName}\nReport to developer.");
                     break;
             }
