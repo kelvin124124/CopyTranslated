@@ -1,16 +1,14 @@
 using CopyTranslated.Windows;
 using Dalamud;
 using Dalamud.ContextMenu;
-using Dalamud.Data;
-using Dalamud.Game.ClientState;
 using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -32,16 +30,16 @@ namespace CopyTranslated
         private const string CommandName = "/pcopy";
 
         private readonly DalamudPluginInterface pluginInterface;
-        private readonly CommandManager commandManager;
+        private readonly ICommandManager commandManager;
 
-        private readonly ChatGui chatGui;
-        private readonly GameGui gameGui;
-        private readonly ClientState clientState;
-        private readonly DataManager dataManager;
+        private readonly IChatGui chatGui;
+        private readonly IGameGui gameGui;
+        private readonly IClientState clientState;
+        private readonly IDataManager dataManager;
 
-        private readonly DalamudContextMenu contextMenu;
-        private readonly GameObjectContextMenuItem gameObjectContextMenuItem;
-        private readonly InventoryContextMenuItem inventoryContextMenuItem;
+        public readonly DalamudContextMenu contextMenu;
+        public readonly GameObjectContextMenuItem gameObjectContextMenuItem;
+        public readonly InventoryContextMenuItem inventoryContextMenuItem;
 
         public Configuration Configuration { get; }
         public WindowSystem WindowSystem { get; } = new("CopyTranslated");
@@ -72,11 +70,11 @@ namespace CopyTranslated
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-            [RequiredVersion("1.0")] CommandManager commandManager,
-            [RequiredVersion("1.0")] ChatGui chatGui,
-            [RequiredVersion("1.0")] GameGui gameGui,
-            [RequiredVersion("1.0")] ClientState clientState,
-            [RequiredVersion("1.0")] DataManager dataManager)
+            [RequiredVersion("1.0")] ICommandManager commandManager,
+            [RequiredVersion("1.0")] IChatGui chatGui,
+            [RequiredVersion("1.0")] IGameGui gameGui,
+            [RequiredVersion("1.0")] IClientState clientState,
+            [RequiredVersion("1.0")] IDataManager dataManager)
         {
             this.pluginInterface = pluginInterface;
             this.commandManager = commandManager;
@@ -94,7 +92,7 @@ namespace CopyTranslated
             pluginInterface.UiBuilder.Draw += DrawUI;
             pluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            contextMenu = new DalamudContextMenu();
+            contextMenu = new DalamudContextMenu(pluginInterface);
             gameObjectContextMenuItem = new GameObjectContextMenuItem(
                 new SeString(new TextPayload("Copy Translated")), Lookup, true);
             contextMenu.OnOpenGameObjectContextMenu += OpenGameObjectContextMenu;
@@ -161,7 +159,7 @@ namespace CopyTranslated
             SeStringBuilder sb = new();
             sb.AddUiForeground("[CT] ", 58).Append(message);
 
-            chatGui.PrintChat(new XivChatEntry { Message = sb.BuiltString });
+            chatGui.Print(new XivChatEntry { Message = sb.BuiltString });
         }
 
         private void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
