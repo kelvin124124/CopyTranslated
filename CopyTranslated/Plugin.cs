@@ -26,7 +26,7 @@ namespace CopyTranslated
 {
     public sealed class Plugin : IDalamudPlugin
     {
-        public string Name => "CopyTranslated";
+        public static string Name => "CopyTranslated";
         private const string CommandName = "/pcopy";
 
         private readonly DalamudPluginInterface pluginInterface;
@@ -50,7 +50,7 @@ namespace CopyTranslated
         private ExcelSheet<Item>? itemSheetCache;
         private readonly Dictionary<string, string> languageFilterCache = new();
 
-        private readonly HashSet<string> validAddons = new HashSet<string>
+        private readonly HashSet<string> validAddons = new()
         {
             "ContentsInfoDetail",
             "RecipeNote",
@@ -199,7 +199,7 @@ namespace CopyTranslated
                     break;
                 case "ChatLog":
                     itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x948);
-                    if (itemId > 1000000) itemId = itemId % 500000;
+                    if (itemId > 1000000) itemId %= 500000;
                     break;
                 case "DailyQuestSupply":
                 case "GrandCompanySupplyList":
@@ -226,6 +226,7 @@ namespace CopyTranslated
                     if (itemId == 0) OutputChatLine($"Error: {itemId}, {args.ParentAddonName}\nReport to developer.");
                     break;
             }
+            OutputChatLine($"Item ID: {itemId}");
             GetItemInfoAndCopyToClipboard(itemId, Configuration.SelectedLanguage);
         }
 
@@ -314,7 +315,7 @@ namespace CopyTranslated
             return Filter;
         }
 
-        private static Lazy<HttpClient> LazyHttpClient = new Lazy<HttpClient>(() => new HttpClient());
+        private static readonly Lazy<HttpClient> LazyHttpClient = new(() => new HttpClient());
 
         private async Task GetItemNameByApi(uint itemId, string language)
         {
