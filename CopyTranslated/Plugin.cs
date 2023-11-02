@@ -9,9 +9,6 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.UI;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
@@ -50,22 +47,6 @@ namespace CopyTranslated
         private ExcelSheet<Item>? itemSheetCache;
         private readonly Dictionary<string, string> languageFilterCache = new();
 
-        private readonly HashSet<string> validAddons = new()
-        {
-            "ContentsInfoDetail",
-            "RecipeNote",
-            "ChatLog",
-            "DailyQuestSupply",
-            "GrandCompanySupplyList",
-            "GrandCompanyExchange",
-            "RecipeTree",
-            "RecipeMaterialList",
-            "FreeCompanyChest",
-            "ShopExchangeCurrency",
-            "ShopExchangeItem",
-            "Shop",
-            "ItemSearch"
-        };
         private uint hoveredItemId = 0;
 
         public Plugin(
@@ -167,11 +148,12 @@ namespace CopyTranslated
             // prevent showing the option when player is selected
             if (args.ObjectWorld != 0) return;
 
-            if (validAddons.Contains(args.ParentAddonName ?? ""))
-            {
-                hoveredItemId = (uint)gameGui.HoveredItem;
-                args.AddCustomItem(gameObjectContextMenuItem);
-            }
+            hoveredItemId = (uint)gameGui.HoveredItem;
+
+            // prevent showing the option when action is selected
+            if (hoveredItemId == 0) return;
+
+            args.AddCustomItem(gameObjectContextMenuItem);
         }
 
         private void OpenInventoryContextMenu(InventoryContextMenuOpenArgs args)
@@ -181,52 +163,8 @@ namespace CopyTranslated
 
         private unsafe void Lookup(GameObjectContextMenuItemSelectedArgs args)
         {
-            uint itemId = hoveredItemId;
+            uint itemId = hoveredItemId % 500000;
 
-            switch (args.ParentAddonName)
-            {
-                case "ContentsInfoDetail":
-                    {
-                        UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
-                        AgentModule* agents = uiModule->GetAgentModule();
-                        AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
-
-                        itemId = *(uint*)((nint)agent + 0x17CC);
-                        break;
-                    }
-                case "RecipeNote":
-                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x398);
-                    break;
-                case "ChatLog":
-                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x948);
-                    if (itemId > 1000000) itemId %= 500000;
-                    break;
-                case "DailyQuestSupply":
-                case "GrandCompanySupplyList":
-                case "GrandCompanyExchange":
-                case "ShopExchangeCurrency":
-                case "ShopExchangeItem":
-                case "Shop":
-                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x54);
-                    break;
-                case "RecipeTree":
-                case "RecipeMaterialList":
-                    {
-                        UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
-                        AgentModule* agents = uiModule->GetAgentModule();
-                        AgentInterface* agent = agents->GetAgentByInternalId(AgentId.RecipeItemContext);
-
-                        itemId = *(uint*)((nint)agent + 0x28);
-                        break;
-                    }
-                case "FreeCompanyChest":
-                    itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x508);
-                    break;
-                default:
-                    if (itemId == 0) OutputChatLine($"Error: {itemId}, {args.ParentAddonName}\nReport to developer.");
-                    break;
-            }
-            OutputChatLine($"Item ID: {itemId}");
             GetItemInfoAndCopyToClipboard(itemId, Configuration.SelectedLanguage);
         }
 
@@ -254,7 +192,6 @@ namespace CopyTranslated
 
         public void GetItemInfoAndCopyToClipboard(uint itemId, string language)
         {
-            if (itemId == 0) return;
             if (isSheetAvailableCache == false)
             {
                 Task.Run(() => GetItemNameByApi(itemId, language));
