@@ -9,6 +9,9 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
@@ -150,8 +153,11 @@ namespace CopyTranslated
 
             hoveredItemId = (uint)gameGui.HoveredItem;
 
-            // prevent showing the option when action is selected
-            if (hoveredItemId == 0) return;
+            if (args.ParentAddonName != "ContentsInfoDetail") 
+            {
+                // prevent showing the option when action is selected
+                if (hoveredItemId == 0) return;
+            }
 
             args.AddCustomItem(gameObjectContextMenuItem);
         }
@@ -164,6 +170,15 @@ namespace CopyTranslated
         private unsafe void Lookup(GameObjectContextMenuItemSelectedArgs args)
         {
             uint itemId = hoveredItemId % 500000;
+
+            if (args.ParentAddonName == "ContentsInfoDetail")
+            {
+                UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
+                AgentModule* agents = uiModule->GetAgentModule();
+                AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
+
+                itemId = *(uint*)((nint)agent + 0x17CC);
+            }
 
             GetItemInfoAndCopyToClipboard(itemId, Configuration.SelectedLanguage);
         }
