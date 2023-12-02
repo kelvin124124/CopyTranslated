@@ -191,6 +191,7 @@ namespace CopyTranslated
         // Detect language packs
         private bool IsSheetAvailable(ExcelSheet<Item>? sheet)
         {
+            if (Configuration.SelectedLanguage == "Chinese (Simplified)" || Configuration.SelectedLanguage == "Chinese (Traditional)") return false;
             if (clientState.ClientLanguage != MapLanguageToClientLanguage(Configuration.SelectedLanguage)) return true;
 
             var testItemNames = new Dictionary<ClientLanguage, string>
