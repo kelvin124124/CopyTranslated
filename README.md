@@ -27,8 +27,7 @@ mac:[XIV-on-Mac](https://github.com/marzent/XIV-on-Mac)）
 English, Japanese, German, French, Chinese (Simplified and Traditional).
 
 ## To-do(s) 🎯
-Add support to more UI elements  
-Command & window for in-game item translator (maybe)  
+Command & window for in-game item translator
 
 ## Contributing 🤝
 Contributions are welcome! Feel free to open an issue or submit a pull request.
