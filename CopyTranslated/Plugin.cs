@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 
 namespace CopyTranslated
 {
@@ -146,14 +147,17 @@ namespace CopyTranslated
             chatGui.Print(new XivChatEntry { Message = sb.BuiltString });
         }
 
-        private void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
+        private unsafe void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
         {
             // prevent showing the option when player is selected
             if (args.ObjectWorld != 0) return;
 
             hoveredItemId = (uint)gameGui.HoveredItem;
 
-            if (args.ParentAddonName != "ContentsInfoDetail") 
+            if (args.ParentAddonName != "RecipeNote"
+                && args.ParentAddonName != "RecipeTree"
+                && args.ParentAddonName != "RecipeMaterialList"
+                && args.ParentAddonName != "ContentsInfoDetail") 
             {
                 // prevent showing the option when action is selected
                 if (hoveredItemId == 0) return;
@@ -178,6 +182,18 @@ namespace CopyTranslated
                 AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
 
                 itemId = *(uint*)((nint)agent + 0x17CC);
+            }
+            else if (args.ParentAddonName == "RecipeNote")
+            {
+                itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x398);
+            }
+            else if (args.ParentAddonName == "RecipeTree" || args.ParentAddonName == "RecipeMaterialList")
+            {
+                UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
+                AgentModule* agents = uiModule->GetAgentModule();
+                AgentInterface* agent = agents->GetAgentByInternalId(AgentId.RecipeItemContext);
+
+                itemId = *(uint*)((nint)agent + 0x28);
             }
 
             GetItemInfoAndCopyToClipboard(itemId, Configuration.SelectedLanguage);
