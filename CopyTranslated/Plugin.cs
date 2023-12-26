@@ -21,7 +21,6 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using FFXIVClientStructs.FFXIV.Client.Game.UI;
 
 namespace CopyTranslated
 {
@@ -49,7 +48,7 @@ namespace CopyTranslated
         private bool? isSheetAvailableCache;
         private bool isTraditionalChinese = false;
         private ExcelSheet<Item>? itemSheetCache;
-        private readonly Dictionary<string, string> languageFilterCache = new();
+        private readonly Dictionary<string, string> languageFilterCache = [];
 
         private uint hoveredItemId = 0;
 
