@@ -48,7 +48,7 @@ namespace CopyTranslated
         private bool? isSheetAvailableCache;
         private bool isTraditionalChinese = false;
         private ExcelSheet<Item>? itemSheetCache;
-        private readonly Dictionary<string, string> languageFilterCache = [];
+        private readonly Dictionary<string, string> languageFilterCache = new();
 
         private uint hoveredItemId = 0;
 

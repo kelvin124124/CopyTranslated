@@ -27,11 +27,6 @@ namespace CopyTranslated.Windows
 
         public override void Draw()
         {
-            DrawLanguageDropdown();
-        }
-
-        private void DrawLanguageDropdown()
-        {
             ImGui.AlignTextToFramePadding();
             ImGui.Text("Language");
             ImGui.SameLine();
