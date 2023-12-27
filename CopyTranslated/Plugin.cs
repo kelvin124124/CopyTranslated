@@ -302,7 +302,7 @@ namespace CopyTranslated
             {
                 var jsonContent = await LazyHttpClient.Value.GetStringAsync(apiUrl);
 
-                var match = Regex.Match(jsonContent, @":\""(.*?)\""}");
+                var match = Regex.Match(jsonContent, @":\""(.*?)\""}", RegexOptions.Compiled);
 
                 string itemName = match.Groups[1].Value ?? "";
 
