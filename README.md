@@ -13,7 +13,7 @@ mac:[XIV-on-Mac](https://github.com/marzent/XIV-on-Mac)）
 3. The item name is now copied to your clipboard in your selected language.
 
 ## Settings ⚙️
-/pcopy in game chat to open the plugin configuration window to select your desired language for translation. Supported languages include 
+`/pcopy` in game chat to open the plugin configuration window to select your desired language for translation. Supported languages include 
 English, Japanese, German, French, Chinese (Simplified and Traditional).
 
 ## To-do(s) 🎯
