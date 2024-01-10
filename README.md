@@ -1,9 +1,5 @@
 # Copy Translated [![Download count](https://img.shields.io/endpoint?url=https://qzysathwfhebdai6xgauhz4q7m0mzmrf.lambda-url.us-east-1.on.aws/CopyTranslated)](https://github.com/kelvin124124/CopyTranslated)
-<div align="center">
-    
-English | [繁體中文](README_zh-TW.md)
 
-</div>
 "Copy Translated" is a Dalamud plugin for the game FFXIV that allows users to effortlessly copy translated in-game item names with just a single click from the context menu. Perfect for users with custom language pack installed!
 
   - **Before**: Copy item name -> Google for item -> Paste translated name in websites (or marketboard)
