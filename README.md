@@ -1,4 +1,4 @@
-# Copy Translated
+# Copy Translated [![Download count](https://img.shields.io/endpoint?url=https://qzysathwfhebdai6xgauhz4q7m0mzmrf.lambda-url.us-east-1.on.aws/CopyTranslated)](https://github.com/kelvin124124/CopyTranslated)
 <div align="center">
     
 English | [繁體中文](README_zh-TW.md)
