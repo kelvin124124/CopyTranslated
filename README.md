@@ -1,4 +1,4 @@
-# CopyTranslated [![Download count](https://img.shields.io/endpoint?url=https://qzysathwfhebdai6xgauhz4q7m0mzmrf.lambda-url.us-east-1.on.aws/CopyTranslated)](https://github.com/kelvin124124/CopyTranslated)
+# CopyTranslated [![Download count](https://img.shields.io/endpoint?url=https://qzysathwfhebdai6xgauhz4q7m0mzmrf.lambda-url.us-east-1.on.aws/CopyTranslated)](https://github.com/kelvin124124/CopyTranslated) [![CodeFactor](https://www.codefactor.io/repository/github/kelvin124124/copytranslated/badge)](https://www.codefactor.io/repository/github/kelvin124124/copytranslated)
 
 CopyTranslated is a Dalamud plugin for the game FFXIV that allows users to copy translated in-game item names with just a single click from the context menu. Perfect for users with custom language pack installed!
 
