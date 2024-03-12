@@ -16,5 +16,5 @@ mac:[XIV-on-Mac](https://github.com/marzent/XIV-on-Mac)）
 `/pcopy` in game chat to open the plugin configuration window to select your desired language for translation. Supported languages include 
 English, Japanese, German, French, Chinese (Simplified and Traditional).
 
-## To-do(s) 🎯
-Command & window for in-game item translator
+## Recommended plugins
+[EasyTranslate](https://github.com/Olaren15/ffxiv-easy-translate) by Olaren15: Search and give translation for other in-game elements like emotes, FATE, etc.
