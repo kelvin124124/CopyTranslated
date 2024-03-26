@@ -1,23 +1,25 @@
 using CopyTranslated.Windows;
 using Dalamud;
-using Dalamud.ContextMenu;
 using Dalamud.Game.Command;
+using Dalamud.Game.Gui.ContextMenu;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
+using Dalamud.Networking.Http;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.GeneratedSheets2;
 using Microsoft.International.Converters.TraditionalChineseToSimplifiedConverter;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -34,29 +36,37 @@ namespace CopyTranslated
 
         private readonly IChatGui chatGui;
         private readonly IGameGui gameGui;
+        private readonly IContextMenu contextMenu;
         private readonly IClientState clientState;
         private readonly IDataManager dataManager;
 
-        public readonly DalamudContextMenu contextMenu;
-        public readonly GameObjectContextMenuItem gameObjectContextMenuItem;
-        public readonly InventoryContextMenuItem inventoryContextMenuItem;
+        private readonly MenuItem gameObjectContextMenuItem;
+        private readonly MenuItem inventoryContextMenuItem;
 
-        public Configuration Configuration { get; }
-        public WindowSystem WindowSystem { get; } = new("CopyTranslated");
+        public Configuration configuration { get; }
+        public WindowSystem windowSystem { get; } = new("CopyTranslated");
         private readonly ConfigWindow configWindow;
 
-        private bool? isSheetAvailableCache;
-        private bool isTraditionalChinese = false;
-        private ExcelSheet<Item>? itemSheetCache;
-        private readonly Dictionary<string, string> languageFilterCache = new();
+        private bool useLuminaSheets = false;
+        private ExcelSheet<Item>? itemSheet;
+        private readonly Dictionary<uint, string> itemCache = [];
 
         private uint hoveredItemId = 0;
+
+        private static readonly HttpClient HttpClient =
+        new(new SocketsHttpHandler
+        {
+            AutomaticDecompression = DecompressionMethods.All,
+            ConnectCallback = new HappyEyeballsCallback().ConnectCallback,
+        })
+        { Timeout = TimeSpan.FromSeconds(10) };
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
             [RequiredVersion("1.0")] ICommandManager commandManager,
             [RequiredVersion("1.0")] IChatGui chatGui,
             [RequiredVersion("1.0")] IGameGui gameGui,
+            [RequiredVersion("1.0")] IContextMenu contextMenu,
             [RequiredVersion("1.0")] IClientState clientState,
             [RequiredVersion("1.0")] IDataManager dataManager)
         {
@@ -64,26 +74,31 @@ namespace CopyTranslated
             this.commandManager = commandManager;
             this.chatGui = chatGui;
             this.gameGui = gameGui;
+            this.contextMenu = contextMenu;
             this.clientState = clientState;
             this.dataManager = dataManager;
 
-            Configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-            Configuration.Initialize(pluginInterface);
+            configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+            configuration.Initialize(pluginInterface);
 
             configWindow = new ConfigWindow(this);
-            WindowSystem.AddWindow(configWindow);
+            windowSystem.AddWindow(configWindow);
 
             pluginInterface.UiBuilder.Draw += DrawUI;
             pluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            contextMenu = new DalamudContextMenu(pluginInterface);
-            gameObjectContextMenuItem = new GameObjectContextMenuItem(
-                new SeString(new TextPayload("Copy Translated")), Lookup, true);
-            contextMenu.OnOpenGameObjectContextMenu += OpenGameObjectContextMenu;
+            gameObjectContextMenuItem = new MenuItem
+            {
+                Name = "Copy Translated",
+                OnClicked = OnGameObjectMenuItemClicked
+            };
+            inventoryContextMenuItem = new MenuItem
+            {
+                Name = "Copy Translated",
+                OnClicked = OnInventoryMenuItemClicked
+            };
+            contextMenu.OnMenuOpened += OnContextMenuOpened;
 
-            inventoryContextMenuItem = new InventoryContextMenuItem(
-                new SeString(new TextPayload("Copy Translated")), InventoryLookup, true);
-            contextMenu.OnOpenInventoryContextMenu += OpenInventoryContextMenu;
 
             commandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
@@ -93,50 +108,74 @@ namespace CopyTranslated
             Initialize();
             configWindow.OnLanguageChanged += Initialize;
         }
+        private void OnContextMenuOpened(MenuOpenedArgs args)
+        {
+            if (args.MenuType != ContextMenuType.Inventory)
+            {
+                hoveredItemId = (uint)gameGui.HoveredItem;
+                if (hoveredItemId == 0 && args.AddonName != "ContentsInfoDetail")
+                    return;
+                args.AddMenuItem(gameObjectContextMenuItem);
+            }
+            else
+            {
+                args.AddMenuItem(inventoryContextMenuItem);
+            }
+        }
 
         public void Dispose()
         {
             configWindow.OnLanguageChanged -= Initialize;
 
-            contextMenu.OnOpenGameObjectContextMenu -= OpenGameObjectContextMenu;
-            contextMenu.OnOpenInventoryContextMenu -= OpenInventoryContextMenu;
-            contextMenu.Dispose();
+            contextMenu.OnMenuOpened -= OnContextMenuOpened;
 
-            WindowSystem.RemoveAllWindows();
+            windowSystem.RemoveAllWindows();
             configWindow.Dispose();
-
-            isSheetAvailableCache = null;
-            itemSheetCache = null;
-            languageFilterCache.Clear();
-
-            if (LazyHttpClient.IsValueCreated) LazyHttpClient.Value.Dispose();
         }
         private void OnCommand(string command, string args)
         {
             configWindow.IsOpen = true;
         }
 
-        private void DrawUI() => WindowSystem.Draw();
+        private void DrawUI() => windowSystem.Draw();
 
         public void DrawConfigUI() => configWindow.IsOpen = true;
 
         private void Initialize()
         {
-            isTraditionalChinese = false;
+            itemSheet = null;
+            itemCache.Clear();
+            useLuminaSheets = false;
+
+            if (configuration.SelectedLanguage == "Chinese (Simplified)" || configuration.SelectedLanguage == "Chinese (Traditional)")
+                return;
 
             try
             {
-                itemSheetCache = dataManager.GetExcelSheet<Item>(MapLanguageToClientLanguage(Configuration.SelectedLanguage));
-            }
-            catch (Exception ex)
-            {
-                OutputChatLine($"Error: Failed to fetch Excel sheet for language {Configuration.SelectedLanguage}. " +
-                    $"Details: {ex.Message}");
-            }
-            isSheetAvailableCache = IsSheetAvailable(itemSheetCache);
+                var sheet = dataManager.GetExcelSheet<Item>(ConvertToClientLanguage(configuration.SelectedLanguage));
 
-            languageFilterCache.Clear();
+                var testItemNames = new Dictionary<ClientLanguage, string>
+                {
+                    { ClientLanguage.English, "Cobalt Ingot" },
+                    { ClientLanguage.Japanese, "コバルトインゴット" },
+                    { ClientLanguage.German, "Koboldeisenbarren" },
+                    { ClientLanguage.French, "Lingot de cobalt" }
+                };
+                var testItemName = testItemNames.GetValueOrDefault(clientState.ClientLanguage, "Cobalt Ingot");
+                if ((sheet?.GetRow(5059)?.Name ?? "") == testItemName)
+                    useLuminaSheets = true;
+            }
+            catch { return; }
         }
+
+        private static ClientLanguage ConvertToClientLanguage(string language) => language switch
+        {
+            "English" => ClientLanguage.English,
+            "Japanese" => ClientLanguage.Japanese,
+            "German" => ClientLanguage.German,
+            "French" => ClientLanguage.French,
+            _ => ClientLanguage.English
+        };
 
         internal void OutputChatLine(SeString message)
         {
@@ -146,153 +185,56 @@ namespace CopyTranslated
             chatGui.Print(new XivChatEntry { Message = sb.BuiltString });
         }
 
-        private unsafe void OpenGameObjectContextMenu(GameObjectContextMenuOpenArgs args)
+        private void OnGameObjectMenuItemClicked(MenuItemClickedArgs args)
         {
-            // prevent showing the option when player is selected
-            if (args.ObjectWorld != 0) return;
+            uint itemid = hoveredItemId;
+            if (hoveredItemId == 0)
+                itemid = GetItemidFromContentsInfoDetail();
 
-            hoveredItemId = (uint)gameGui.HoveredItem;
-
-            if (args.ParentAddonName != "RecipeNote"
-                && args.ParentAddonName != "RecipeTree"
-                && args.ParentAddonName != "RecipeMaterialList"
-                && args.ParentAddonName != "ContentsInfoDetail") 
-            {
-                // prevent showing the option when action is selected
-                if (hoveredItemId == 0) return;
-            }
-
-            args.AddCustomItem(gameObjectContextMenuItem);
+            ProcessItemId(itemid);
         }
 
-        private void OpenInventoryContextMenu(InventoryContextMenuOpenArgs args)
+        private void OnInventoryMenuItemClicked(MenuItemClickedArgs args)
         {
-            args.AddCustomItem(inventoryContextMenuItem);
+            var target = (MenuTargetInventory)args.Target;
+            var item = target.TargetItem;
+            if (item.HasValue)
+                ProcessItemId(item.Value.ItemId);
         }
 
-        private unsafe void Lookup(GameObjectContextMenuItemSelectedArgs args)
+        private async void ProcessItemId(uint itemid)
         {
-            uint itemId = hoveredItemId % 500000;
-
-            if (args.ParentAddonName == "ContentsInfoDetail")
-            {
-                UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
-                AgentModule* agents = uiModule->GetAgentModule();
-                AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
-
-                itemId = *(uint*)((nint)agent + 0x17CC);
-            }
-            else if (args.ParentAddonName == "RecipeNote")
-            {
-                itemId = *(uint*)(gameGui.FindAgentInterface(args.ParentAddonName) + 0x398);
-            }
-            else if (args.ParentAddonName == "RecipeTree" || args.ParentAddonName == "RecipeMaterialList")
-            {
-                UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
-                AgentModule* agents = uiModule->GetAgentModule();
-                AgentInterface* agent = agents->GetAgentByInternalId(AgentId.RecipeItemContext);
-
-                itemId = *(uint*)((nint)agent + 0x28);
-            }
-
-            GetItemInfoAndCopyToClipboard(itemId, Configuration.SelectedLanguage);
+            itemid %= 500000;
+            string itemName = await GetItemName(itemid).ConfigureAwait(false);
+            ImGui.SetClipboardText(itemName);
+            OutputChatLine($"Item copied: {itemName}");
         }
 
-        private void InventoryLookup(InventoryContextMenuItemSelectedArgs args)
+        private unsafe uint GetItemidFromContentsInfoDetail()
         {
-            GetItemInfoAndCopyToClipboard(args.ItemId, Configuration.SelectedLanguage);
+            UIModule* uiModule = (UIModule*)gameGui.GetUIModule();
+            AgentModule* agents = uiModule->GetAgentModule();
+            AgentInterface* agent = agents->GetAgentByInternalId(AgentId.ContentsTimer);
+
+            return *(uint*)((nint)agent + 0x17CC);
         }
 
-        // Detect language packs
-        private bool IsSheetAvailable(ExcelSheet<Item>? sheet)
+        private async Task<string> GetItemName(uint itemId)
         {
-            if (Configuration.SelectedLanguage == "Chinese (Simplified)" || Configuration.SelectedLanguage == "Chinese (Traditional)") return false;
-            if (clientState.ClientLanguage != MapLanguageToClientLanguage(Configuration.SelectedLanguage)) return true;
+            if (itemCache.TryGetValue(itemId, out var itemName))
+                return itemName;
 
-            var testItemNames = new Dictionary<ClientLanguage, string>
-            {
-                { ClientLanguage.English, "Cobalt Ingot" },
-                { ClientLanguage.Japanese, "コバルトインゴット" },
-                { ClientLanguage.German, "Koboldeisenbarren" },
-                { ClientLanguage.French, "Lingot de cobalt" }
-            };
+            if (useLuminaSheets && itemSheet != null)
+                itemName = itemSheet?.GetRow(itemId)?.Name ?? "";
 
-            var testItemName = testItemNames.GetValueOrDefault(clientState.ClientLanguage, "Cobalt Ingot");
-            return (sheet?.GetRow(5059)?.Name ?? "") == testItemName;
+            if (itemName.IsNullOrEmpty())
+                itemName = await GetItemNameFromApi(itemId, configuration.SelectedLanguage).ConfigureAwait(false);
+
+            return itemName;
         }
 
-        public void GetItemInfoAndCopyToClipboard(uint itemId, string language)
+        private async Task<string> GetItemNameFromApi(uint itemId, string language)
         {
-            if (isSheetAvailableCache == false)
-            {
-                Task.Run(() => GetItemNameByApi(itemId, language));
-                return;
-            }
-
-            Item? item = null;
-            item = itemSheetCache?.GetRow(itemId);
-
-            var itemName = item?.Name ?? string.Empty;
-            if (string.IsNullOrEmpty(itemName))
-            {
-                OutputChatLine($"Error: Item not found in {language} database for ID {itemId}");
-                return;
-            }
-            else
-            {
-                ImGui.SetClipboardText(itemName);
-                OutputChatLine($"Item copied: {itemName}");
-            }
-        }
-
-        private static ClientLanguage MapLanguageToClientLanguage(string fullLanguageName) => fullLanguageName switch
-        {
-            "English" => ClientLanguage.English,
-            "Japanese" => ClientLanguage.Japanese,
-            "German" => ClientLanguage.German,
-            "French" => ClientLanguage.French,
-            _ => ClientLanguage.English
-        };
-
-        private string MapLanguageToFilter(string fullLanguageName)
-        {
-            if (languageFilterCache.TryGetValue(fullLanguageName, out var Filter))
-            {
-                return Filter;
-            }
-
-            if (fullLanguageName == "Chinese (Traditional)")
-            {
-                Filter = "Name_chs";
-                isTraditionalChinese = true;
-                languageFilterCache[fullLanguageName] = Filter;
-                return Filter;
-            }
-
-            Filter = fullLanguageName switch
-            {
-                "English" => "Name_en",
-                "Japanese" => "Name_ja",
-                "German" => "Name_de",
-                "French" => "Name_fr",
-                "Chinese (Simplified)" => "Name_chs",
-                _ => "Name_en"
-            };
-
-            languageFilterCache[fullLanguageName] = Filter;
-            return Filter;
-        }
-
-        private static readonly Lazy<HttpClient> LazyHttpClient = new(() => new HttpClient());
-
-        private async Task GetItemNameByApi(uint itemId, string language)
-        {
-            if (itemId == 0)
-            {
-                ImGui.SetClipboardText("");
-                return;
-            }
-
             var filter = MapLanguageToFilter(language);
             string apiUrl = filter == "Name_chs" ?
                 $"https://cafemaker.wakingsands.com/Item/{itemId}?columns={filter}" :
@@ -300,35 +242,44 @@ namespace CopyTranslated
 
             try
             {
-                var jsonContent = await LazyHttpClient.Value.GetStringAsync(apiUrl);
+                var jsonContent = await HttpClient.GetStringAsync(apiUrl).ConfigureAwait(false);
 
                 var match = Regex.Match(jsonContent, @":\""(.*?)\""}", RegexOptions.Compiled);
 
                 string itemName = match.Groups[1].Value ?? "";
+                itemName = Regex.Unescape(itemName);
 
-                if (filter == "Name_chs")
-                {
-                    itemName = Regex.Unescape(itemName);
-                    if (isTraditionalChinese)
-                    {
-                        itemName = ChineseConverter.Convert(itemName, ChineseConversionDirection.SimplifiedToTraditional);
-                    };
-                }
+                if (language == "Chinese (Traditional)")
+                    itemName = ChineseConverter.Convert(itemName, ChineseConversionDirection.SimplifiedToTraditional);
+
                 if (string.IsNullOrEmpty(itemName))
                 {
-                    OutputChatLine($"Error: API error at {DateTime.Now:HH:mm:ss tt} {apiUrl} returned {jsonContent}");
+                    throw new Exception("API request failed.");
                 }
-
                 else
                 {
-                    ImGui.SetClipboardText(itemName);
-                    OutputChatLine($"Item copied: {itemName}");
+                    return itemName;
                 }
             }
             catch (Exception ex)
             {
                 OutputChatLine($"Error: {ex.Message}");
+                return "";
             }
+        }
+
+        private static string MapLanguageToFilter(string language)
+        {
+            return language switch
+            {
+                "English" => "Name_en",
+                "Japanese" => "Name_ja",
+                "German" => "Name_de",
+                "French" => "Name_fr",
+                "Chinese (Simplified)" => "Name_chs",
+                "Chinese (Traditional)" => "Name_chs",
+                _ => "Name_en"
+            };
         }
     }
 }
