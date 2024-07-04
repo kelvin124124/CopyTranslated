@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Authors>kelvin124124</Authors>
     <Company></Company>
-    <Version>1.1.4</Version>
+    <Version>1.1.4.1</Version>
     <Description>Copy translated item name by right-clicking.</Description>
     <Copyright></Copyright>
     <PackageProjectUrl>https://github.com/kelvin124124/CopyTranslated</PackageProjectUrl>
@@ -31,7 +31,7 @@
 
   <ItemGroup>
     <PackageReference Include="CHTCHSConv" Version="1.0.0" />
-    <PackageReference Include="DalamudPackager" Version="2.1.12" />
+    <PackageReference Include="DalamudPackager" Version="2.1.13" />
     <Reference Include="FFXIVClientStructs">
       <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
       <Private>false</Private>

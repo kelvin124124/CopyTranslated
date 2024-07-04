@@ -1,18 +1,16 @@
 using CopyTranslated.Windows;
-using Dalamud;
+using Dalamud.Game;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui.ContextMenu;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Windowing;
-using Dalamud.IoC;
 using Dalamud.Networking.Http;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets2;
@@ -31,7 +29,7 @@ namespace CopyTranslated
         public static string Name => "CopyTranslated";
         private const string CommandName = "/pcopy";
 
-        private readonly DalamudPluginInterface pluginInterface;
+        private readonly IDalamudPluginInterface pluginInterface;
         private readonly ICommandManager commandManager;
 
         private readonly IChatGui chatGui;
@@ -62,13 +60,13 @@ namespace CopyTranslated
         { Timeout = TimeSpan.FromSeconds(10) };
 
         public Plugin(
-            [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-            [RequiredVersion("1.0")] ICommandManager commandManager,
-            [RequiredVersion("1.0")] IChatGui chatGui,
-            [RequiredVersion("1.0")] IGameGui gameGui,
-            [RequiredVersion("1.0")] IContextMenu contextMenu,
-            [RequiredVersion("1.0")] IClientState clientState,
-            [RequiredVersion("1.0")] IDataManager dataManager)
+            IDalamudPluginInterface pluginInterface,
+            ICommandManager commandManager,
+            IChatGui chatGui,
+            IGameGui gameGui,
+            IContextMenu contextMenu,
+            IClientState clientState,
+            IDataManager dataManager)
         {
             this.pluginInterface = pluginInterface;
             this.commandManager = commandManager;
@@ -108,7 +106,7 @@ namespace CopyTranslated
             Initialize();
             configWindow.OnLanguageChanged += Initialize;
         }
-        private void OnContextMenuOpened(MenuOpenedArgs args)
+        private void OnContextMenuOpened(IMenuOpenedArgs args)
         {
             if (args.MenuType != ContextMenuType.Inventory)
             {
@@ -185,7 +183,7 @@ namespace CopyTranslated
             chatGui.Print(new XivChatEntry { Message = sb.BuiltString });
         }
 
-        private void OnGameObjectMenuItemClicked(MenuItemClickedArgs args)
+        private void OnGameObjectMenuItemClicked(IMenuItemClickedArgs args)
         {
             uint itemid = hoveredItemId;
             if (hoveredItemId == 0)
@@ -194,7 +192,7 @@ namespace CopyTranslated
             ProcessItemId(itemid);
         }
 
-        private void OnInventoryMenuItemClicked(MenuItemClickedArgs args)
+        private void OnInventoryMenuItemClicked(IMenuItemClickedArgs args)
         {
             var target = (MenuTargetInventory)args.Target;
             var item = target.TargetItem;

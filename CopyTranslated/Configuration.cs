@@ -11,9 +11,9 @@ namespace CopyTranslated
         public string SelectedLanguage { get; set; } = "English";
 
         [NonSerialized]
-        private DalamudPluginInterface? pluginInterface;
+        private IDalamudPluginInterface? pluginInterface;
 
-        public void Initialize(DalamudPluginInterface pluginInterface)
+        public void Initialize(IDalamudPluginInterface pluginInterface)
         {
             this.pluginInterface = pluginInterface;
         }
