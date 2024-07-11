@@ -88,12 +88,14 @@ namespace CopyTranslated
             gameObjectContextMenuItem = new MenuItem
             {
                 Name = "Copy Translated",
-                OnClicked = OnGameObjectMenuItemClicked
+                OnClicked = OnGameObjectMenuItemClicked,
+                UseDefaultPrefix = true
             };
             inventoryContextMenuItem = new MenuItem
             {
                 Name = "Copy Translated",
-                OnClicked = OnInventoryMenuItemClicked
+                OnClicked = OnInventoryMenuItemClicked,
+                UseDefaultPrefix = true
             };
             contextMenu.OnMenuOpened += OnContextMenuOpened;
 
