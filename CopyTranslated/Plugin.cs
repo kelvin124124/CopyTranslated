@@ -8,7 +8,6 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Networking.Http;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
@@ -17,21 +16,19 @@ using Lumina.Excel.GeneratedSheets2;
 using Microsoft.International.Converters.TraditionalChineseToSimplifiedConverter;
 using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace CopyTranslated
 {
-    public sealed class Plugin : IDalamudPlugin
+    public sealed partial class Plugin : IDalamudPlugin
     {
         public static string Name => "CopyTranslated";
         private const string CommandName = "/pcopy";
 
         private readonly IDalamudPluginInterface pluginInterface;
         private readonly ICommandManager commandManager;
-
         private readonly IChatGui chatGui;
         private readonly IGameGui gameGui;
         private readonly IContextMenu contextMenu;
@@ -47,25 +44,27 @@ namespace CopyTranslated
 
         private bool useLuminaSheets = false;
         private ExcelSheet<Item>? itemSheet;
-        private readonly Dictionary<uint, string> itemCache = [];
+        private readonly Dictionary<string, string> itemCache = [];
 
         private uint hoveredItemId = 0;
 
-        private static readonly HttpClient HttpClient =
-        new(new SocketsHttpHandler
+        [GeneratedRegex(@":\""(.*?)\""}", RegexOptions.Compiled)]
+        private static partial Regex jsonRegex();
+
+        private static readonly HttpClient HttpClient = new(new SocketsHttpHandler
         {
-            AutomaticDecompression = DecompressionMethods.All,
+            AutomaticDecompression = System.Net.DecompressionMethods.All,
             ConnectCallback = new HappyEyeballsCallback().ConnectCallback,
         })
         { Timeout = TimeSpan.FromSeconds(10) };
 
         public Plugin(
-            IDalamudPluginInterface pluginInterface,
-            ICommandManager commandManager,
-            IChatGui chatGui,
-            IGameGui gameGui,
-            IContextMenu contextMenu,
-            IClientState clientState,
+            IDalamudPluginInterface pluginInterface, 
+            ICommandManager commandManager, 
+            IChatGui chatGui, 
+            IGameGui gameGui, 
+            IContextMenu contextMenu, 
+            IClientState clientState, 
             IDataManager dataManager)
         {
             this.pluginInterface = pluginInterface;
@@ -85,60 +84,39 @@ namespace CopyTranslated
             pluginInterface.UiBuilder.Draw += DrawUI;
             pluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            gameObjectContextMenuItem = new MenuItem
-            {
-                Name = "Copy Translated",
-                OnClicked = OnGameObjectMenuItemClicked,
-                UseDefaultPrefix = true
+            gameObjectContextMenuItem = new MenuItem 
+            { 
+                Name = "Copy Translated", 
+                OnClicked = OnGameObjectMenuItemClicked, 
+                UseDefaultPrefix = true 
             };
-            inventoryContextMenuItem = new MenuItem
-            {
-                Name = "Copy Translated",
-                OnClicked = OnInventoryMenuItemClicked,
-                UseDefaultPrefix = true
+            inventoryContextMenuItem = new MenuItem 
+            { 
+                Name = "Copy Translated", 
+                OnClicked = OnInventoryMenuItemClicked, 
+                UseDefaultPrefix = true 
             };
             contextMenu.OnMenuOpened += OnContextMenuOpened;
 
-
-            commandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
-            {
-                HelpMessage = "Open copy translated configuration window."
+            commandManager.AddHandler(CommandName, new CommandInfo(OnCommand) 
+            { 
+                HelpMessage = "Open copy translated configuration window." 
             });
 
             Initialize();
             configWindow.OnLanguageChanged += Initialize;
         }
-        private void OnContextMenuOpened(IMenuOpenedArgs args)
-        {
-            if (args.MenuType != ContextMenuType.Inventory)
-            {
-                hoveredItemId = (uint)gameGui.HoveredItem;
-                if (hoveredItemId == 0 && args.AddonName != "ContentsInfoDetail")
-                    return;
-                args.AddMenuItem(gameObjectContextMenuItem);
-            }
-            else
-            {
-                args.AddMenuItem(inventoryContextMenuItem);
-            }
-        }
 
         public void Dispose()
         {
             configWindow.OnLanguageChanged -= Initialize;
-
             contextMenu.OnMenuOpened -= OnContextMenuOpened;
-
             windowSystem.RemoveAllWindows();
             configWindow.Dispose();
         }
-        private void OnCommand(string command, string args)
-        {
-            configWindow.IsOpen = true;
-        }
 
+        private void OnCommand(string command, string args) => configWindow.IsOpen = true;
         private void DrawUI() => windowSystem.Draw();
-
         public void DrawConfigUI() => configWindow.IsOpen = true;
 
         private void Initialize()
@@ -147,12 +125,11 @@ namespace CopyTranslated
             itemCache.Clear();
             useLuminaSheets = false;
 
-            if (configuration.SelectedLanguage == "Chinese (Simplified)" || configuration.SelectedLanguage == "Chinese (Traditional)")
-                return;
+            if (configuration.SelectedLanguage is "Chinese (Simplified)" or "Chinese (Traditional)") return;
 
             try
             {
-                var sheet = dataManager.GetExcelSheet<Item>(ConvertToClientLanguage(configuration.SelectedLanguage));
+                itemSheet = dataManager.GetExcelSheet<Item>(ConvertToClientLanguage(configuration.SelectedLanguage));
 
                 var testItemNames = new Dictionary<ClientLanguage, string>
                 {
@@ -161,11 +138,9 @@ namespace CopyTranslated
                     { ClientLanguage.German, "Koboldeisenbarren" },
                     { ClientLanguage.French, "Lingot de cobalt" }
                 };
-                var testItemName = testItemNames.GetValueOrDefault(clientState.ClientLanguage, "Cobalt Ingot");
-                if ((sheet?.GetRow(5059)?.Name ?? "") == testItemName)
-                    useLuminaSheets = true;
+                useLuminaSheets = (itemSheet?.GetRow(5059)?.Name ?? "") == testItemNames.GetValueOrDefault(clientState.ClientLanguage, "Cobalt Ingot");
             }
-            catch { return; }
+            catch { }
         }
 
         private static ClientLanguage ConvertToClientLanguage(string language) => language switch
@@ -185,27 +160,85 @@ namespace CopyTranslated
             chatGui.Print(new XivChatEntry { Message = sb.BuiltString });
         }
 
-        private void OnGameObjectMenuItemClicked(IMenuItemClickedArgs args)
+        private void OnContextMenuOpened(IMenuOpenedArgs args)
         {
-            uint itemid = hoveredItemId;
-            if (hoveredItemId == 0)
-                itemid = GetItemidFromContentsInfoDetail();
+            if (args.MenuType != ContextMenuType.Inventory)
+            {
+                hoveredItemId = (uint)gameGui.HoveredItem;
+                if (hoveredItemId == 0 && args.AddonName != "ContentsInfoDetail") return;
 
-            ProcessItemId(itemid);
+                if (configuration.MultiLanguageMode)
+                    AddMultiLanguageGameObjectMenuItems(args);
+                else
+                    args.AddMenuItem(gameObjectContextMenuItem);
+            }
+            else
+            {
+                if (configuration.MultiLanguageMode)
+                    AddMultiLanguageInventoryMenuItems(args);
+                else
+                    args.AddMenuItem(inventoryContextMenuItem);
+            }
         }
+
+        private void AddMultiLanguageGameObjectMenuItems(IMenuOpenedArgs args)
+        {
+            foreach (var (language, isSelected) in configuration.SelectedLanguages)
+            {
+                if (isSelected)
+                {
+                    var itemid = hoveredItemId == 0 ? GetItemidFromContentsInfoDetail() : hoveredItemId;
+                    args.AddMenuItem(new MenuItem
+                    {
+                        Name = $"Copy {language} name",
+                        OnClicked = (_) => ProcessItemId(itemid, language),
+                        UseDefaultPrefix = true
+                    });
+                }
+            }
+        }
+
+        private void AddMultiLanguageInventoryMenuItems(IMenuOpenedArgs args)
+        {
+            foreach (var (language, isSelected) in configuration.SelectedLanguages)
+            {
+                var item = ((MenuTargetInventory)args.Target).TargetItem;
+                if (item.HasValue)
+                {
+                    if (isSelected)
+                        args.AddMenuItem(new MenuItem
+                        {
+                            Name = $"Copy {language} name",
+                            OnClicked = (_) => ProcessItemId(item.Value.ItemId, language),
+                            UseDefaultPrefix = true
+                        });
+                } 
+                else 
+                    OutputChatLine("Error: Cannot get itemid.");
+            }
+        }
+
+        private void OnGameObjectMenuItemClicked(IMenuItemClickedArgs args) =>
+            ProcessItemId(hoveredItemId == 0 ? GetItemidFromContentsInfoDetail() : hoveredItemId);
 
         private void OnInventoryMenuItemClicked(IMenuItemClickedArgs args)
         {
-            var target = (MenuTargetInventory)args.Target;
-            var item = target.TargetItem;
-            if (item.HasValue)
-                ProcessItemId(item.Value.ItemId);
+            var item = ((MenuTargetInventory)args.Target).TargetItem;
+            if (item.HasValue) ProcessItemId(item.Value.ItemId);
         }
 
         private async void ProcessItemId(uint itemid)
         {
             itemid %= 500000;
             string itemName = await GetItemName(itemid).ConfigureAwait(false);
+            ImGui.SetClipboardText(itemName);
+            OutputChatLine($"Item copied: {itemName}");
+        }
+
+        private async void ProcessItemId(uint itemid, string language)
+        {
+            itemid %= 500000;
+            string itemName = await GetItemName(itemid, language).ConfigureAwait(false);
             ImGui.SetClipboardText(itemName);
             OutputChatLine($"Item copied: {itemName}");
         }
@@ -221,14 +254,24 @@ namespace CopyTranslated
 
         private async Task<string> GetItemName(uint itemId)
         {
-            if (itemCache.TryGetValue(itemId, out var itemName))
+            return await GetItemName(itemId, configuration.SelectedLanguage).ConfigureAwait(false);
+        }
+
+        private async Task<string> GetItemName(uint itemId, string language)
+        {
+            string cacheKey = $"{itemId}_{language}";
+
+            if (itemCache.TryGetValue(cacheKey, out var itemName)) 
                 return itemName;
 
-            if (useLuminaSheets && itemSheet != null)
-                itemName = itemSheet?.GetRow(itemId)?.Name ?? "";
+            if (useLuminaSheets && language is not "Chinese (Simplified)" and not "Chinese (Traditional)")
+                itemName = dataManager.GetExcelSheet<Item>(ConvertToClientLanguage(language))?.GetRow(itemId)?.Name ?? "";
 
-            if (itemName.IsNullOrEmpty())
-                itemName = await GetItemNameFromApi(itemId, configuration.SelectedLanguage).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(itemName))
+                itemName = await GetItemNameFromApi(itemId, language).ConfigureAwait(false);
+
+            if (!string.IsNullOrEmpty(itemName))
+                itemCache[cacheKey] = itemName;
 
             return itemName;
         }
@@ -243,23 +286,13 @@ namespace CopyTranslated
             try
             {
                 var jsonContent = await HttpClient.GetStringAsync(apiUrl).ConfigureAwait(false);
-
-                var match = Regex.Match(jsonContent, @":\""(.*?)\""}", RegexOptions.Compiled);
-
-                string itemName = match.Groups[1].Value ?? "";
-                itemName = Regex.Unescape(itemName);
+                var match = jsonRegex().Match(jsonContent);
+                string itemName = Regex.Unescape(match.Groups[1].Value ?? "");
 
                 if (language == "Chinese (Traditional)")
                     itemName = ChineseConverter.Convert(itemName, ChineseConversionDirection.SimplifiedToTraditional);
 
-                if (string.IsNullOrEmpty(itemName))
-                {
-                    throw new Exception("API request failed.");
-                }
-                else
-                {
-                    return itemName;
-                }
+                return string.IsNullOrEmpty(itemName) ? throw new Exception("API response failed.") : itemName;
             }
             catch (Exception ex)
             {
@@ -268,18 +301,15 @@ namespace CopyTranslated
             }
         }
 
-        private static string MapLanguageToFilter(string language)
+        private static string MapLanguageToFilter(string language) => language switch
         {
-            return language switch
-            {
-                "English" => "Name_en",
-                "Japanese" => "Name_ja",
-                "German" => "Name_de",
-                "French" => "Name_fr",
-                "Chinese (Simplified)" => "Name_chs",
-                "Chinese (Traditional)" => "Name_chs",
-                _ => "Name_en"
-            };
-        }
+            "English" => "Name_en",
+            "Japanese" => "Name_ja",
+            "German" => "Name_de",
+            "French" => "Name_fr",
+            "Chinese (Simplified)" => "Name_chs",
+            "Chinese (Traditional)" => "Name_chs",
+            _ => "Name_en"
+        };
     }
 }
