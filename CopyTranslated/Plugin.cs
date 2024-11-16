@@ -12,7 +12,7 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
 using Lumina.Excel;
-using Lumina.Excel.GeneratedSheets2;
+using Lumina.Excel.Sheets;
 using Microsoft.International.Converters.TraditionalChineseToSimplifiedConverter;
 using System;
 using System.Collections.Generic;
@@ -138,7 +138,7 @@ namespace CopyTranslated
                     { ClientLanguage.German, "Koboldeisenbarren" },
                     { ClientLanguage.French, "Lingot de cobalt" }
                 };
-                useLuminaSheets = (itemSheet?.GetRow(5059)?.Name ?? "") == testItemNames.GetValueOrDefault(clientState.ClientLanguage, "Cobalt Ingot");
+                useLuminaSheets = (itemSheet?.GetRow(5059).Name ?? "") == testItemNames.GetValueOrDefault(clientState.ClientLanguage, "Cobalt Ingot");
             }
             catch { }
         }
@@ -265,7 +265,7 @@ namespace CopyTranslated
                 return itemName;
 
             if (useLuminaSheets && language is not "Chinese (Simplified)" and not "Chinese (Traditional)")
-                itemName = dataManager.GetExcelSheet<Item>(ConvertToClientLanguage(language))?.GetRow(itemId)?.Name ?? "";
+                itemName = dataManager.GetExcelSheet<Item>(ConvertToClientLanguage(language))?.GetRow(itemId).Name.ToString() ?? "";
 
             if (string.IsNullOrEmpty(itemName))
                 itemName = await GetItemNameFromApi(itemId, language).ConfigureAwait(false);
