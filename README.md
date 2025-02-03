@@ -1,4 +1,9 @@
-# CopyTranslated [![Download count](https://img.shields.io/endpoint?url=https://qzysathwfhebdai6xgauhz4q7m0mzmrf.lambda-url.us-east-1.on.aws/CopyTranslated)](https://github.com/kelvin124124/CopyTranslated) [![CodeFactor](https://www.codefactor.io/repository/github/kelvin124124/copytranslated/badge)](https://www.codefactor.io/repository/github/kelvin124124/copytranslated)
+## ⚠️⚠️Discontinued⚠️⚠️
+Support will be dropped when Patch 7.2 arrives.  
+Users are advised to use [EasyTranslate](https://github.com/Olaren15/ffxiv-easy-translate) instead.  
+[EasyTranslate](https://github.com/Olaren15/ffxiv-easy-translate) by Olaren15: Search and give translation for other in-game elements like emotes, FATE, etc.
+
+# CopyTranslated
 
 CopyTranslated is a Dalamud plugin for the game FFXIV that allows users to copy translated in-game item names with just a single click from the context menu. Perfect for users with custom language pack installed!
 
@@ -15,6 +20,3 @@ mac:[XIV-on-Mac](https://github.com/marzent/XIV-on-Mac)）
 ## Settings ⚙️
 `/pcopy` in game chat to open the plugin configuration window to select your desired language for translation. Supported languages include 
 English, Japanese, German, French, Chinese (Simplified and Traditional).
-
-## Recommended plugins
-[EasyTranslate](https://github.com/Olaren15/ffxiv-easy-translate) by Olaren15: Search and give translation for other in-game elements like emotes, FATE, etc.
